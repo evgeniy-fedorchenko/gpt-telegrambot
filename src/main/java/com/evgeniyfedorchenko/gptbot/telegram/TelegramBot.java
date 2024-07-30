@@ -1,5 +1,6 @@
 package com.evgeniyfedorchenko.gptbot.telegram;
 
+import com.evgeniyfedorchenko.gptbot.yandex.YandexCaller;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -12,8 +13,12 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 @Component
 public class TelegramBot extends TelegramLongPollingBot {
 
-    public TelegramBot(@Value("${telegram-bot.token}") String botToken) {
+    private final YandexCaller yandexCaller;
+
+    public TelegramBot(@Value("${telegram-bot.token}") String botToken,
+                       YandexCaller yandexCaller) {
         super(botToken);
+        this.yandexCaller = yandexCaller;
     }
 
     @Override
@@ -43,7 +48,8 @@ public class TelegramBot extends TelegramLongPollingBot {
     }
 
     private SendMessage processing(Update update) {
-        return new SendMessage(String.valueOf(update.getMessage().getChatId()), "I hear!");
+        String result = yandexCaller.buildRequest(update.getMessage().getText());
+        return new SendMessage(update.getMessage().getChatId().toString(), result);
     }
 
     private void send(SendMessage messToSend) {
