@@ -3,7 +3,6 @@ package com.evgeniyfedorchenko.gptbot.yandex;
 import com.evgeniyfedorchenko.gptbot.yandex.models.GptAnswer;
 import com.evgeniyfedorchenko.gptbot.yandex.models.GptRequestBody;
 import com.evgeniyfedorchenko.gptbot.yandex.models.Message;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -28,11 +27,9 @@ public class YandexCaller {
     @SneakyThrows
     public String buildRequest(String inputText) {
 
-        GptRequestBody body = buildBody(inputText);
-        String s = new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(body);
         GptAnswer response = webClient.post()
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + IAM_TOKEN)
-                .bodyValue(body)
+                .bodyValue(buildBody(inputText))
                 .retrieve()
                 .bodyToMono(GptAnswer.class)
                 .block();
