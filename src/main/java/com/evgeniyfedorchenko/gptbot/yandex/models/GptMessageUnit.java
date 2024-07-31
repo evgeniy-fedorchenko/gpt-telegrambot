@@ -10,10 +10,10 @@ import lombok.Getter;
  * @param text Сам текст сообщения
  */
 
-public record Message(String role, String text) {
+public record GptMessageUnit(String role, String text) {
 
     /**
-     * Идентификаторы отправителей сообщений. Передаются в объекте {@link Message}. Чтоб модель видела
+     * Идентификаторы отправителей сообщений. Передаются в объекте {@link GptMessageUnit}. Чтоб модель видела
      * что спрашивал сам юзер и что отвечала она - контекст и отталкивалась от него в будущих ответах.
      */
     @Getter

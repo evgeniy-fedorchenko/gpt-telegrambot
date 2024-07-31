@@ -26,7 +26,7 @@ public class GptRequestBody {
     /**
      * История сообщений,"контекст"
      */
-    private final List<Message> messages;
+    private final List<GptMessageUnit> gptMessageUnits;
 
     /**
      * Технические настройки желаемого ответа
@@ -53,7 +53,7 @@ curl --request POST
     "temperature": 0.6,
     "maxTokens": "2000"
   },
-  "messages": [
+  "gptMessageUnits": [
   *Вся история чата. Новые - снизу*
     {
       "role": "user",

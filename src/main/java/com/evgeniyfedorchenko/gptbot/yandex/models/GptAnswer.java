@@ -8,7 +8,7 @@ public record GptAnswer(@NotNull GptAnswer.Result result) {
 
     public record Result(List<Alternative> alternatives, Usage usage, String modelVersion) { }
 
-    public record Alternative(Message message, String status) { }
+    public record Alternative(GptMessageUnit gptMessageUnit, String status) { }
 
     public record Usage(int inputTextTokens, int completionTokens, int totalTokens) { }
 
@@ -21,7 +21,7 @@ Response:
   "result": {
     "alternatives": [
       {
-        "message": {
+        "gptMessageUnit": {
           "role": "assistant",
           "text": "Ответ модели здесь"
         },
