@@ -1,24 +1,30 @@
 package com.evgeniyfedorchenko.gptbot.telegram;
 
 import com.evgeniyfedorchenko.gptbot.yandex.YandexCaller;
+import com.evgeniyfedorchenko.gptbot.yandex.YandexService;
+import jakarta.annotation.Nullable;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 @Component
 public class TelegramBot extends TelegramLongPollingBot {
 
-    private final YandexCaller yandexCaller;
+    private final YandexService yandexService;
 
     public TelegramBot(@Value("${telegram-bot.token}") String botToken,
-                       YandexCaller yandexCaller) {
+                       YandexService yandexService) {
         super(botToken);
-        this.yandexCaller = yandexCaller;
+        this.yandexService = yandexService;
     }
 
     @Override
@@ -36,27 +42,38 @@ public class TelegramBot extends TelegramLongPollingBot {
     @Override
     public void onUpdateReceived(Update update) {
 
-        if (update != null) {
+        if (update != null && update.hasMessage()) {
 
             log.debug("Processing has BEGUN for updateID {}", update.getUpdateId());
 
-            SendMessage messToSend = processing(update);
-            this.send(messToSend);
+            CompletableFuture.supplyAsync(() -> processing(update))
+                    .thenAccept(this::send)
+
+                    .exceptionally(ex -> {
+                        log.error("ex: ", ex);
+                        return null;
+                    });
 
             log.debug("Processing has ENDED for updateID {}", update.getUpdateId());
         }
     }
 
     private SendMessage processing(Update update) {
-        String result = yandexCaller.buildRequest(update.getMessage().getText());
-        return new SendMessage(update.getMessage().getChatId().toString(), result);
+
+        Message inMess = update.getMessage();
+
+        String answerText = yandexService.newCall(inMess);
+        String chatId = String.valueOf(inMess.getChatId());
+
+        return new SendMessage(chatId, answerText);
     }
 
     private void send(SendMessage messToSend) {
         try {
-            this.execute(messToSend);
+            this.executeAsync(messToSend);
         } catch (TelegramApiException e) {
             throw new RuntimeException(e);
+            // TODO 31.07.2024 17:14
         }
     }
 }

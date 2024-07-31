@@ -1,8 +1,8 @@
 package com.evgeniyfedorchenko.gptbot.yandex;
 
 import com.evgeniyfedorchenko.gptbot.yandex.models.GptAnswer;
+import com.evgeniyfedorchenko.gptbot.yandex.models.GptMessageUnit;
 import com.evgeniyfedorchenko.gptbot.yandex.models.GptRequestBody;
-import com.evgeniyfedorchenko.gptbot.yandex.models.Message;
 import lombok.AllArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -11,7 +11,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -25,26 +24,22 @@ public class YandexCaller {
     private final WebClient webClient;
 
     @SneakyThrows
-    public String buildRequest(String inputText) {
+    public GptAnswer buildRequest(List<GptMessageUnit> history) {
 
-        GptAnswer response = webClient.post()
+        return webClient.post()
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + IAM_TOKEN)
-                .bodyValue(buildBody(inputText))
+                .bodyValue(buildBody(history))
                 .retrieve()
                 .bodyToMono(GptAnswer.class)
                 .block();
-
-        return response.result().alternatives().getFirst().message().text();
     }
 
-    private GptRequestBody buildBody(String inputText) {
-        List<Message> messages = new ArrayList<>(List.of(
-                new Message(Message.Role.USER.getRole(), inputText)
-        ));
+    private GptRequestBody buildBody(List<GptMessageUnit> history) {
+
         return GptRequestBody.builder()
                 .modelUri(yandexProperties.getModelUriPattern().formatted(yandexProperties.getFolderId()))
                 .completionOptions(new GptRequestBody.CompletionOptions(false, 0.6D, 2000))
-                .messages(messages)
+                .gptMessageUnits(history)
                 .build();
     }
 
