@@ -23,7 +23,8 @@ public class RedisConfiguration {
         RedisTemplate<String, GptMessageUnit> redisTemplate = new RedisTemplate<>();
         redisTemplate.setConnectionFactory(connectionFactory);
 
-        Jackson2JsonRedisSerializer<GptMessageUnit> messSerializer = new Jackson2JsonRedisSerializer<>(objectMapper, GptMessageUnit.class);
+        Jackson2JsonRedisSerializer<GptMessageUnit> messSerializer
+                = new Jackson2JsonRedisSerializer<>(objectMapper, GptMessageUnit.class);
 
         redisTemplate.setKeySerializer(new StringRedisSerializer());
         redisTemplate.setValueSerializer(messSerializer);
