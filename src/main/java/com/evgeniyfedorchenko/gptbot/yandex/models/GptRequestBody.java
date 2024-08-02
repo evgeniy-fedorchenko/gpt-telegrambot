@@ -8,8 +8,8 @@ import java.util.List;
 /**
  * Класс представляет собой тело запроса, который направляется на обработку модели Яндекса
  */
-@Builder
 @Getter
+@Builder
 public class GptRequestBody {
 
     /**
@@ -21,12 +21,14 @@ public class GptRequestBody {
     /**
      * Настройки ответа: режим потока, температура, ограничение по токенам
      */
-    private final CompletionOptions completionOptions;
+    @Builder.Default
+    private final CompletionOptions completionOptions
+            = new CompletionOptions(false, 0.5D, 2000);
 
     /**
      * История сообщений,"контекст"
      */
-    private final List<GptMessageUnit> gptMessageUnits;
+    private final List<GptMessageUnit> messages;
 
     /**
      * Технические настройки желаемого ответа
@@ -53,7 +55,7 @@ curl --request POST
     "temperature": 0.6,
     "maxTokens": "2000"
   },
-  "gptMessageUnits": [
+  "messages": [
   *Вся история чата. Новые - снизу*
     {
       "role": "user",

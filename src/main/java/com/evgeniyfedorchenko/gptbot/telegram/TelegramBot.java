@@ -1,18 +1,22 @@
 package com.evgeniyfedorchenko.gptbot.telegram;
 
-import com.evgeniyfedorchenko.gptbot.yandex.YandexCaller;
 import com.evgeniyfedorchenko.gptbot.yandex.YandexService;
-import jakarta.annotation.Nullable;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.meta.api.methods.BotApiMethod;
+import org.telegram.telegrambots.meta.api.methods.PartialBotApiMethod;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
+import org.telegram.telegrambots.meta.api.methods.send.SendSticker;
+import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
-import java.util.Optional;
+import java.io.InputStream;
+import java.io.Serializable;
 import java.util.concurrent.CompletableFuture;
 
 @Slf4j
@@ -50,7 +54,7 @@ public class TelegramBot extends TelegramLongPollingBot {
                     .thenAccept(this::send)
 
                     .exceptionally(ex -> {
-                        log.error("ex: ", ex);
+                        log.error("ex: ", ex.getCause());
                         return null;
                     });
 
@@ -58,24 +62,60 @@ public class TelegramBot extends TelegramLongPollingBot {
         }
     }
 
-    private SendMessage processing(Update update) {
+    private PartialBotApiMethod<? extends Serializable> processing(Update update) {
 
         Message inMess = update.getMessage();
 
-        String answerText = yandexService.newCall(inMess);
-        String chatId = String.valueOf(inMess.getChatId());
+        if (inMess.getText().startsWith("check ")) {
+            InputStream is = yandexService.getReadyPicture(inMess.getText().replace("check ", ""));
+            InputFile result = new InputFile(is, "result");
+            return new SendPhoto(String.valueOf(inMess.getChatId()), result);
+        }
+        String imageId = yandexService.newPicture(update.getMessage());
+        return new SendMessage(String.valueOf(update.getMessage().getChatId()), imageId);
+//        String answerText = yandexService.newCall(inMess);
+//        String chatId = String.valueOf(inMess.getChatId());
+//
+//        SendMessage sendMessage = new SendMessage();
+//        sendMessage.enableMarkdown(true);
+//        sendMessage.setChatId(chatId);
+//        sendMessage.setText(answerText);
 
-        return new SendMessage(chatId, answerText);
+//        return sendMessage;
     }
 
-    private void send(SendMessage messToSend) {
+    private boolean send(PartialBotApiMethod<? extends Serializable> method) {
+        boolean suc = true;
         try {
-            this.executeAsync(messToSend);
-        } catch (TelegramApiException e) {
-            throw new RuntimeException(e);
+            switch (method) {
+                case SendSticker sendSticker -> execute(sendSticker);
+                case SendPhoto sendPhoto -> execute(sendPhoto);
+                case BotApiMethod<? extends Serializable> other -> execute(other);
+                default -> {
+                    log.error("Unexpected value to DefaultAbsSender.execute(): {}", method.getClass());
+                    suc = false;
+                }
+            }
+            return suc;
+        } catch (TelegramApiException ex) {
+            log.error("TelegramApiException was thrown. Cause: {}", ex.getMessage());
+            return false;
+        }
+
+
+//        try {
+//            this.execute(messToSend);
+//        } catch (TelegramApiException e) {
+//            messToSend.enableMarkdown(false);
+//            log.warn("Markdown disable");
+//            try {
+//                this.execute(messToSend);
+//            } catch (TelegramApiException ex) {
+//                throw new RuntimeException(ex);
+//            }
             // TODO 31.07.2024 17:14
         }
     }
-}
+
 
 
