@@ -5,15 +5,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
-import org.telegram.telegrambots.meta.api.methods.BotApiMethod;
 import org.telegram.telegrambots.meta.api.methods.PartialBotApiMethod;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
-import org.telegram.telegrambots.meta.api.methods.send.SendSticker;
 import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
-import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.io.InputStream;
 import java.io.Serializable;
@@ -24,11 +21,14 @@ import java.util.concurrent.CompletableFuture;
 public class TelegramBot extends TelegramLongPollingBot {
 
     private final YandexService yandexService;
+    private final TelegramExecutor telegramExecutor;
 
     public TelegramBot(@Value("${telegram-bot.token}") String botToken,
-                       YandexService yandexService) {
+                       YandexService yandexService,
+                       TelegramExecutor telegramExecutor) {
         super(botToken);
         this.yandexService = yandexService;
+        this.telegramExecutor = telegramExecutor;
     }
 
     @Override
@@ -37,9 +37,10 @@ public class TelegramBot extends TelegramLongPollingBot {
     }
 
     /**
-     * Метод получения сообщений непосредственно с серверов Telegram, а так же их маршрутизации
-     * по методам обработки. Полученный результат отправляется обратно на сервера Telegram с
-     * помощью метода {@link  TelegramBot#send(SendMessage)}
+     * Точка входа в приложение со стороны Телеграм-бота
+     * Метод первично валидирует принятый объект, после чего направляет на маршрутизацию и обработку.
+     * После обработки ответ направляется в {@link TelegramExecutor#send(PartialBotApiMethod)} для
+     * отправки контента юзеру
      *
      * @param update корневой объект, содержащий всю информацию о пришедшем обновлении
      */
@@ -51,7 +52,7 @@ public class TelegramBot extends TelegramLongPollingBot {
             log.debug("Processing has BEGUN for updateID {}", update.getUpdateId());
 
             CompletableFuture.supplyAsync(() -> processing(update))
-                    .thenAccept(this::send)
+                    .thenAccept(telegramExecutor::send)
 
                     .exceptionally(ex -> {
                         log.error("ex: ", ex.getCause());
@@ -83,39 +84,4 @@ public class TelegramBot extends TelegramLongPollingBot {
 
 //        return sendMessage;
     }
-
-    private boolean send(PartialBotApiMethod<? extends Serializable> method) {
-        boolean suc = true;
-        try {
-            switch (method) {
-                case SendSticker sendSticker -> execute(sendSticker);
-                case SendPhoto sendPhoto -> execute(sendPhoto);
-                case BotApiMethod<? extends Serializable> other -> execute(other);
-                default -> {
-                    log.error("Unexpected value to DefaultAbsSender.execute(): {}", method.getClass());
-                    suc = false;
-                }
-            }
-            return suc;
-        } catch (TelegramApiException ex) {
-            log.error("TelegramApiException was thrown. Cause: {}", ex.getMessage());
-            return false;
-        }
-
-
-//        try {
-//            this.execute(messToSend);
-//        } catch (TelegramApiException e) {
-//            messToSend.enableMarkdown(false);
-//            log.warn("Markdown disable");
-//            try {
-//                this.execute(messToSend);
-//            } catch (TelegramApiException ex) {
-//                throw new RuntimeException(ex);
-//            }
-            // TODO 31.07.2024 17:14
-        }
-    }
-
-
-
+}
