@@ -1,6 +1,6 @@
 package com.evgeniyfedorchenko.gptbot.data;
 
-import com.evgeniyfedorchenko.gptbot.yandex.models.GptMessageUnit;
+import com.evgeniyfedorchenko.gptbot.yandex.model.GptMessageUnit;
 
 import java.util.List;
 

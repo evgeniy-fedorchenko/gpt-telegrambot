@@ -1,6 +1,6 @@
 package com.evgeniyfedorchenko.gptbot.configuration;
 
-import com.evgeniyfedorchenko.gptbot.yandex.models.GptMessageUnit;
+import com.evgeniyfedorchenko.gptbot.yandex.model.GptMessageUnit;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import org.springframework.cache.annotation.EnableCaching;

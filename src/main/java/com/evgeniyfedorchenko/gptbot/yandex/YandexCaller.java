@@ -1,16 +1,9 @@
 package com.evgeniyfedorchenko.gptbot.yandex;
 
-import com.evgeniyfedorchenko.gptbot.yandex.artmodels.ArtGptRequestBody;
-import com.evgeniyfedorchenko.gptbot.yandex.artmodels.ArtMessage;
-import com.evgeniyfedorchenko.gptbot.yandex.artmodels.GenerationOptions;
-import com.evgeniyfedorchenko.gptbot.yandex.artmodels.GptArtAnswer;
-import com.evgeniyfedorchenko.gptbot.yandex.models.GptAnswer;
-import com.evgeniyfedorchenko.gptbot.yandex.models.GptMessageUnit;
-import com.evgeniyfedorchenko.gptbot.yandex.models.GptRequestBody;
+import com.evgeniyfedorchenko.gptbot.yandex.model.*;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -40,7 +33,6 @@ public class YandexCaller {
 
         return GptRequestBody.builder()
                 .modelUri(yandexProperties.getChatbotUriPattern().formatted(yandexProperties.getFolderId()))
-                .completionOptions(new GptRequestBody.CompletionOptions(false, 0.6D, 2000))
                 .messages(history)
                 .build();
     }
@@ -67,15 +59,10 @@ public class YandexCaller {
 
     public String buildRequestArt(String prompt) {
 
-        GenerationOptions options = GenerationOptions.builder()
-                .seed(9)
-                .mimeType(MediaType.IMAGE_JPEG_VALUE)
-                .aspectRatio(new GenerationOptions.AspectRatio(1, 1))
-                .build();
-        ArtGptRequestBody body = ArtGptRequestBody.builder()
+
+        ArtRequestBody body = ArtRequestBody.builder()
                 .modelUri(yandexProperties.getArtModelUriPattern().formatted(yandexProperties.getFolderId()))
-                .generationOptions(options)
-                .messages(Collections.singletonList(new ArtMessage(1, prompt)))
+                .messages(Collections.singletonList(ArtMessageUnit.builder().text(prompt).build()))
                 .build();
 
 
@@ -86,10 +73,10 @@ public class YandexCaller {
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + IAM_TOKEN)
                 .bodyValue(body)
                 .retrieve()
-                .bodyToMono(GptArtAnswer.class)
+                .bodyToMono(ArtAnswer.class)
                 .block()
 
-                .getId();
+                .id();
 
 
         return imageId;
@@ -104,38 +91,17 @@ public class YandexCaller {
                         .maxInMemorySize(10 * 1024 * 1024))
                 .baseUrl(yandexProperties.getArtModelCompleteUrlPattern().formatted(imageId))
                 .build();
-        GptArtAnswer answer = build.get()
+        ArtAnswer answer = build.get()
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + IAM_TOKEN)
                 .retrieve()
-                .bodyToMono(GptArtAnswer.class)
+                .bodyToMono(ArtAnswer.class)
                 .block();
 
-        return answer.isDone()
-                ? answer.getResponse().getImage()
+        return answer.done()
+                ? answer.response().image()
                 : "not ready";
 //        return answer;
     }
 
 
 }
-
-/*
-
-{
-"modelUri": "art://<идентификатор_каталога>/yandex-art/latest",
-"generationOptions": {
-  "seed": "1863",
-  "aspectRatio": {
-     "widthRatio": "2",
-     "heightRatio": "1"
-   }
-},
-"messages": [
-  {
-    "weight": "1",
-    "text": "узор из цветных пастельных суккулентов разных сортов, hd full wallpaper, четкий фокус, множество сложных деталей, глубина кадра, вид сверху"
-  }
-]
-}
-
-*/

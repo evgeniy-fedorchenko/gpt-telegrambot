@@ -1,7 +1,7 @@
 package com.evgeniyfedorchenko.gptbot.yandex;
 
 import com.evgeniyfedorchenko.gptbot.data.RedisService;
-import com.evgeniyfedorchenko.gptbot.yandex.models.GptMessageUnit;
+import com.evgeniyfedorchenko.gptbot.yandex.model.GptMessageUnit;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -56,24 +56,3 @@ public class YandexService {
 
     }
 }
-
-/*
-
-{
-"modelUri": "art://<идентификатор_каталога>/yandex-art/latest",
-"generationOptions": {
-  "seed": "1863",
-  "aspectRatio": {
-     "widthRatio": "2",
-     "heightRatio": "1"
-   }
-},
-"messages": [
-  {
-    "weight": "1",
-    "text": "узор из цветных пастельных суккулентов разных сортов, hd full wallpaper, четкий фокус, множество сложных деталей, глубина кадра, вид сверху"
-  }
-]
-}
-
-*/
