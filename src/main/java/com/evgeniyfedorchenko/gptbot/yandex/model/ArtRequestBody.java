@@ -2,7 +2,6 @@ package com.evgeniyfedorchenko.gptbot.yandex.model;
 
 import lombok.Builder;
 import lombok.Getter;
-import lombok.Setter;
 import org.springframework.http.MediaType;
 
 import java.util.List;
@@ -43,7 +42,7 @@ public class ArtRequestBody {
     /**
      * Предпочтительные параметры конфигурации ответа: тип контента, зерно генерации, соотношение сторон
      */
-    @Setter
+    @Getter
     @Builder
     public static class GenerationOptions {
 
