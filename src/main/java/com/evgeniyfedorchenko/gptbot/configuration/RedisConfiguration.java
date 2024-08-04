@@ -1,5 +1,6 @@
 package com.evgeniyfedorchenko.gptbot.configuration;
 
+import com.evgeniyfedorchenko.gptbot.telegram.Mode;
 import com.evgeniyfedorchenko.gptbot.yandex.model.GptMessageUnit;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
@@ -18,16 +19,37 @@ public class RedisConfiguration {
 
     private final ObjectMapper objectMapper;
 
+    /**
+     * Кеш для хранения истории сообщений в режиме YandexGPT<br>
+     * {@code key} chatId юзера<br>
+     * {@code value} объект {@code com.evgeniyfedorchenko.gptbot.yandex.model.GptMessageUnit.java}
+     * как единица сообщения в истории сообщений (должна храниться в списке таким сообщений)
+     */
     @Bean
-    public RedisTemplate<String, GptMessageUnit> redisTemplate(RedisConnectionFactory connectionFactory) {
+    public RedisTemplate<String, GptMessageUnit> historyRedisTemplate(RedisConnectionFactory connectionFactory) {
         RedisTemplate<String, GptMessageUnit> redisTemplate = new RedisTemplate<>();
         redisTemplate.setConnectionFactory(connectionFactory);
 
         Jackson2JsonRedisSerializer<GptMessageUnit> messSerializer
                 = new Jackson2JsonRedisSerializer<>(objectMapper, GptMessageUnit.class);
 
+
         redisTemplate.setKeySerializer(new StringRedisSerializer());
         redisTemplate.setValueSerializer(messSerializer);
+
+        return redisTemplate;
+    }
+
+    @Bean
+    public RedisTemplate<String, Mode> userModeRedisTemplate(RedisConnectionFactory connectionFactory) {
+        RedisTemplate<String, Mode> redisTemplate = new RedisTemplate<>();
+        redisTemplate.setConnectionFactory(connectionFactory);
+
+        Jackson2JsonRedisSerializer<Mode> modeSerializer
+                = new Jackson2JsonRedisSerializer<>(objectMapper, Mode.class);
+
+        redisTemplate.setKeySerializer(new StringRedisSerializer());
+        redisTemplate.setValueSerializer(modeSerializer);
 
         return redisTemplate;
     }

@@ -1,6 +1,7 @@
 package com.evgeniyfedorchenko.gptbot.configuration;
 
 import io.netty.channel.ChannelOption;
+import io.netty.handler.logging.LogLevel;
 import io.netty.handler.timeout.ReadTimeoutHandler;
 import io.netty.handler.timeout.WriteTimeoutHandler;
 import jakarta.validation.constraints.Positive;
@@ -12,6 +13,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.netty.http.client.HttpClient;
+import reactor.netty.transport.logging.AdvancedByteBufFormat;
 
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
@@ -39,13 +41,12 @@ public class WebClientConfiguration {
     @Positive
     private int responseMaxSize;
 
-
     @Bean
     public WebClient webClient() {
 
         HttpClient nettyHttpClient = HttpClient.create()
 
-                .httpResponseDecoder(spec -> spec.maxHeaderSize(responseMaxSize))
+                .wiretap(this.getClass().getCanonicalName(), LogLevel.TRACE, AdvancedByteBufFormat.TEXTUAL)
 
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, connectTimeout)
                 .responseTimeout(Duration.ofMillis(responseTimeout))
@@ -54,9 +55,11 @@ public class WebClientConfiguration {
                                 .addHandlerLast(new WriteTimeoutHandler(writeTimeout, TimeUnit.MILLISECONDS))
                 );
 
-
         return WebClient.builder()
                 .clientConnector(new ReactorClientHttpConnector(nettyHttpClient))
+                .codecs(clientCodecConfigurer -> clientCodecConfigurer
+                        .defaultCodecs()
+                        .maxInMemorySize(responseMaxSize))
                 .build();
     }
 }

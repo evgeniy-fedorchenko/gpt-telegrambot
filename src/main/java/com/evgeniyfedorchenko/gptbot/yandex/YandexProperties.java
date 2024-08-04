@@ -1,5 +1,6 @@
 package com.evgeniyfedorchenko.gptbot.yandex;
 
+import jakarta.annotation.PostConstruct;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Pattern;
@@ -51,4 +52,9 @@ public class YandexProperties {
     @Pattern(regexp = "^y[0-3]_[a-zA-Z0-9_-]{58}$")
     private String oauthToken;
 
+    @PostConstruct
+    public void yandexPropertiesFormatted() {
+        this.chatbotUriPattern = this.chatbotUriPattern.formatted(folderId);
+        this.artModelUriPattern = this.artModelUriPattern.formatted(folderId);
+    }
 }
