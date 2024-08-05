@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.retry.support.RetryTemplate;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.telegram.telegrambots.meta.api.methods.PartialBotApiMethod;
@@ -21,6 +22,8 @@ import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.Message;
+import reactor.core.Disposable;
+import reactor.core.publisher.Mono;
 
 import java.io.ByteArrayInputStream;
 import java.io.Serializable;
@@ -45,6 +48,7 @@ public class YandexArtService implements AiModelService {
     private final RetryTemplate retryTemplate;
     private final TelegramExecutor telegramExecutor;
     private final UserModeRedisService userModeRedisService;
+    private final ThreadPoolTaskExecutor taskExecutor;
 
     @Override
     public PartialBotApiMethod<? extends Serializable> newCall(Message inputMess) {
@@ -60,16 +64,14 @@ public class YandexArtService implements AiModelService {
             return new SendMessage(chatId, "Бля! Что-то пошло не так, давай по новой");
         }
 
-        ArtAnswer answer = retryTemplate.execute(context -> {
-            ArtAnswer maybeReady = webClient.get()
-                    .uri(yandexProperties.getArtModelCompleteUrlPattern().formatted(artAnswer.getId()))
-                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + YandexGptService.IAM_TOKEN)
-                    .retrieve()
-                    .bodyToMono(ArtAnswer.class)
-                    .block();
-
-            return this.ifDoneOrElseThrow(maybeReady, chatId);
-        });
+        ArtAnswer answer = retryTemplate.execute(context -> webClient.get()
+                .uri(yandexProperties.getArtModelCompleteUrlPattern().formatted(artAnswer.getId()))
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + YandexGptService.IAM_TOKEN)
+                .retrieve()
+                .bodyToMono(ArtAnswer.class)
+                .filter(resp -> ifDoneOrElseThrow(resp, chatId))
+                .switchIfEmpty(Mono.error(() -> new RuntimeException("The picture is not ready yet")))
+                .block());
 
         return completeGen(answer, chatId);
     }
@@ -96,33 +98,39 @@ public class YandexArtService implements AiModelService {
                 .block();
     }
 
-    public ArtAnswer ifDoneOrElseThrow(ArtAnswer maybeReady, String chatId) {
+    private Boolean ifDoneOrElseThrow(ArtAnswer maybeReady, String chatId) {
 
         if (maybeReady != null && maybeReady.isDone()) {
             CompletableFuture.runAsync(() -> {
+
                 telegramExecutor.send(new DeleteMessage(chatId, process.getMessageId()));
                 userModeRedisService.setMode(chatId, Mode.YANDEX_ART);
-            });
-            percentReady = 1;
-            log.info("ART RESP: done: {}, resp-not-null: {}", maybeReady.isDone(), maybeReady.getResponse() != null);
-            return maybeReady;
+                percentReady = 1;
+                log.info("ART RESP: done: {}, resp-not-null: {}", maybeReady.isDone(), maybeReady.getResponse() != null);
+
+            }, taskExecutor);
+
+            return true;
 
         } else {
-            OptionalDouble currentReadyOpt = calculatePercentReady(percentReady);
-            String text;
-            if (currentReadyOpt.isPresent()) {
-                text = "Генерация завершена на %.2f%%".formatted(currentReadyOpt.getAsDouble());
-                percentReady = currentReadyOpt.getAsDouble();
-            } else {
-                text = "to de continue";
-            }
+            CompletableFuture.runAsync(() -> {
+                OptionalDouble currentReadyOpt = calculatePercentReady(percentReady);
+                String text;
+                if (currentReadyOpt.isPresent()) {
+                    text = "Генерация завершена на %.2f%%".formatted(currentReadyOpt.getAsDouble());
+                    percentReady = currentReadyOpt.getAsDouble();
+                } else {
+                    text = "to de continue";
+                }
+                EditMessageText processMess = new EditMessageText(text);
+                processMess.setChatId(chatId);
+                processMess.setMessageId(process.getMessageId());
 
-            EditMessageText processMess = new EditMessageText(text);
-            processMess.setChatId(chatId);
-            processMess.setMessageId(process.getMessageId());
+                telegramExecutor.send(processMess);
 
-            telegramExecutor.send(processMess);
-            throw new RuntimeException("The picture is not ready yet");
+            }, taskExecutor);
+
+            throw false
         }
     }
 
@@ -130,7 +138,7 @@ public class YandexArtService implements AiModelService {
         double logBase;
 
         if (current < 98.7) {
-            
+
             if (current < 30) {
                 logBase = 2;
             } else if (current < 60) {
