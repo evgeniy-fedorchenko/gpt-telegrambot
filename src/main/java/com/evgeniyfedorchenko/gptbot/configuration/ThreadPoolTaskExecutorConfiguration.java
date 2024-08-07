@@ -1,14 +1,19 @@
 package com.evgeniyfedorchenko.gptbot.configuration;
 
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.validation.annotation.Validated;
 
 @Getter
 @Setter
+@Validated
 @Configuration
 @ConfigurationProperties(
         prefix = ThreadPoolTaskExecutorConfiguration.CONFIGURATION_PREFIX,
@@ -20,10 +25,15 @@ public class ThreadPoolTaskExecutorConfiguration {
     static final String CONFIGURATION_PREFIX = "executor";
     private static final int POOL_SIZE = Runtime.getRuntime().availableProcessors();
 
+    @Positive
     private int poolSizeMultiplierForMaxPoolSize;
+    @PositiveOrZero
     private int queueCapacity;
+    @PositiveOrZero
     private int keepAliveSeconds;
+    @PositiveOrZero
     private int awaitTerminationSeconds;
+    @NotEmpty
     private String threadNamePrefix;
 
     @Bean
