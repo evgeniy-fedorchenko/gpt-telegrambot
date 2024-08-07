@@ -1,4 +1,4 @@
-package com.evgeniyfedorchenko.gptbot.yandex;
+package com.evgeniyfedorchenko.gptbot.configuration.properties;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.validation.constraints.NotBlank;
