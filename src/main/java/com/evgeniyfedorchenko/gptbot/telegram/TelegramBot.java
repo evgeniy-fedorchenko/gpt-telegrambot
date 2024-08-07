@@ -50,14 +50,16 @@ public class TelegramBot extends TelegramLongPollingBot {
             log.debug("Processing has BEGUN for updateID {}", update.getUpdateId());
 
             CompletableFuture.supplyAsync(() -> telegramDistributor.distribute(update), taskExecutor)
-                    .thenAccept(telegramExecutor::send)
+                    .thenAccept(result -> {
+                        telegramExecutor.send(result);
+                        log.debug("Processing has FINISHED for updateID {}", update.getUpdateId());
+                    })
 
                     .exceptionally(ex -> {
+                        log.error("Processing has FAILED for updateID {}", update.getUpdateId(), ex);
                         log.error("ex: ", ex.getCause());
                         return null;
                     });
-
-            log.debug("Processing has ENDED for updateID {}", update.getUpdateId());
         }
     }
 

@@ -41,25 +41,6 @@ public class TelegramExecutor extends DefaultAbsSender {
                 case SendPhoto sendPhoto -> execute(sendPhoto);
 
                 case SendMessage sendMessage -> {
-//                    sendMessage.setText(
-//                            sendMessage.  getText().replace("(", "\\(")
-//                                    .replace(")", "\\)")
-//                                    .replace(".", "\\.")
-//                                    .replace("|", "\\|")
-//
-//                                    .replace("+", "\\+")
-//                                    .replace("-", "\\-")
-//                                    .replace("=", "\\=")
-//                                    .replace("**", "*")
-//                                    .replace("*", "\\*")
-//
-//                                    .replace("__", "_")
-//
-//                                    .replace("{", "\\{")
-//                            .replace("}", "\\}")
-//                                    .replace("!", "\\!")
-//                            .replace(">", "\\>")
-//                            .replace("<", "\\<"));
                     sendMessage.enableMarkdown(true);
                         execute(sendMessage);
                 }
