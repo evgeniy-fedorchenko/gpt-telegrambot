@@ -20,7 +20,6 @@ public class OhHttpClientConfiguration {
     private final HttpLoggingInterceptor httpLoggingInterceptor;
     private final NetworkStatsInterceptor networkStatsInterceptor;
 
-
     @Bean
     public OkHttpClient okHttpClient() {
 
@@ -44,7 +43,7 @@ public class OhHttpClientConfiguration {
                 .retryOnConnectionFailure(false)
 
                 .addInterceptor(httpLoggingInterceptor)
-                .addInterceptor(networkStatsInterceptor)
+                .addNetworkInterceptor(networkStatsInterceptor)
 
                 .build();
     }

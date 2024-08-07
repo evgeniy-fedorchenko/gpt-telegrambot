@@ -21,8 +21,10 @@ public class TelegramBotConfiguration {
     /**
      * Бин взаимодействия с Telegram API
      * <p>
-     * Настройка бина для контекста Spring на основе собранного объекта
-     * {@link TelegramBot} и регистрирует его на серверах telegram
+     * Создает и настраивает подключение к серверам Telegram для взаимодействия
+     * с ботом,  регистрирует объект {@link TelegramBot}
+     * При неудачном соединении приложение будет остановлено, а Spring-контекст закрыт
+     *
      * @param telegramBot Инициализированный объект для регистрации
      * @return Системный объект для работы с серверами Telegram
      */
@@ -35,7 +37,7 @@ public class TelegramBotConfiguration {
             return telegramBotsApi;
 
         } catch (TelegramApiException ex) {
-            log.error("Failed to register the Telegram-bot, фзз has been stopped running. Cause: ", ex);
+            log.error("Failed to register the Telegram-bot, app has been stopped running. Cause: ", ex);
             SpringApplication.exit(applicationContext);
             System.exit(1);
             return null;
