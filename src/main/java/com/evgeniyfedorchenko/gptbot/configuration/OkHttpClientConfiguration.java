@@ -1,6 +1,6 @@
 package com.evgeniyfedorchenko.gptbot.configuration;
 
-import com.evgeniyfedorchenko.gptbot.configuration.interceptor.HttpLoggingInterceptor;
+import com.evgeniyfedorchenko.gptbot.configuration.interceptor.HttpLogInterceptor;
 import com.evgeniyfedorchenko.gptbot.configuration.interceptor.NetworkStatsInterceptor;
 import com.evgeniyfedorchenko.gptbot.configuration.properties.OkhttpProperties;
 import lombok.AllArgsConstructor;
@@ -14,10 +14,10 @@ import java.util.concurrent.TimeUnit;
 
 @Configuration
 @AllArgsConstructor
-public class OhHttpClientConfiguration {
+public class OkHttpClientConfiguration {
 
     private final OkhttpProperties properties;
-    private final HttpLoggingInterceptor httpLoggingInterceptor;
+    private final HttpLogInterceptor httpLogInterceptor;
     private final NetworkStatsInterceptor networkStatsInterceptor;
 
     @Bean
@@ -42,7 +42,7 @@ public class OhHttpClientConfiguration {
                 .dispatcher(dispatcher)
                 .retryOnConnectionFailure(false)
 
-                .addInterceptor(httpLoggingInterceptor)
+                .addInterceptor(httpLogInterceptor)
                 .addNetworkInterceptor(networkStatsInterceptor)
 
                 .build();
