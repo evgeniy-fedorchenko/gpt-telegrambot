@@ -21,9 +21,11 @@ public class RedisConfiguration {
 
     /**
      * Кеш для хранения истории сообщений в режиме YandexGPT<br>
-     * {@code key} chatId юзера<br>
-     * {@code value} объект {@code com.evgeniyfedorchenko.gptbot.yandex.model.GptMessageUnit.java}
-     * как единица сообщения в истории сообщений (должна храниться в списке таким сообщений)
+     * <lu>
+     * <li>{@code key} chatId юзера</li>
+     * <li>{@code value} объект {@code com.evgeniyfedorchenko.gptbot.yandex.model.GptMessageUnit.java}
+     * как единица сообщения в истории сообщений (должна храниться в списке таким сообщений)</li>
+     * </lu>
      */
     @Bean
     public RedisTemplate<String, GptMessageUnit> historyRedisTemplate(RedisConnectionFactory connectionFactory) {
