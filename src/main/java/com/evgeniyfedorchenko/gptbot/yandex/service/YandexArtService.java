@@ -4,7 +4,7 @@ import com.evgeniyfedorchenko.gptbot.data.UserModeRedisService;
 import com.evgeniyfedorchenko.gptbot.service.AiModelService;
 import com.evgeniyfedorchenko.gptbot.telegram.Mode;
 import com.evgeniyfedorchenko.gptbot.telegram.TelegramExecutor;
-import com.evgeniyfedorchenko.gptbot.yandex.YandexProperties;
+import com.evgeniyfedorchenko.gptbot.configuration.properties.YandexProperties;
 import com.evgeniyfedorchenko.gptbot.yandex.model.ArtAnswer;
 import com.evgeniyfedorchenko.gptbot.yandex.model.ArtMessageUnit;
 import com.evgeniyfedorchenko.gptbot.yandex.model.ArtRequestBody;
@@ -14,7 +14,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
-import org.springframework.web.reactive.function.client.WebClient;
 import org.telegram.telegrambots.meta.api.methods.PartialBotApiMethod;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
@@ -22,7 +21,6 @@ import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.Message;
-import reactor.core.Disposable;
 import reactor.core.publisher.Mono;
 
 import java.io.ByteArrayInputStream;
@@ -73,10 +71,10 @@ public class YandexArtService implements AiModelService {
                 .switchIfEmpty(Mono.error(() -> new RuntimeException("The picture is not ready yet")))
                 .block());
 
-        return completeGen(answer, chatId);
+        return completeGeneration(answer, chatId);
     }
 
-    private SendPhoto completeGen(ArtAnswer answer, String chatId) {
+    private SendPhoto completeGeneration(ArtAnswer answer, String chatId) {
         byte[] bytes = Base64.getDecoder().decode(answer.getResponse().image());
         InputFile result = new InputFile(new ByteArrayInputStream(bytes), "result");
 
@@ -130,7 +128,7 @@ public class YandexArtService implements AiModelService {
 
             }, taskExecutor);
 
-            throw false
+            return false;
         }
     }
 

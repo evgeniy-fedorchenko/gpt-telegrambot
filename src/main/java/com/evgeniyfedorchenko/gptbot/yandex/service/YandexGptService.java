@@ -1,28 +1,31 @@
 package com.evgeniyfedorchenko.gptbot.yandex.service;
 
+import com.evgeniyfedorchenko.gptbot.configuration.properties.YandexProperties;
 import com.evgeniyfedorchenko.gptbot.data.HistoryRedisService;
+import com.evgeniyfedorchenko.gptbot.exception.GptTelegramBotException;
 import com.evgeniyfedorchenko.gptbot.service.AiModelService;
-import com.evgeniyfedorchenko.gptbot.yandex.YandexProperties;
 import com.evgeniyfedorchenko.gptbot.yandex.model.GptAnswer;
 import com.evgeniyfedorchenko.gptbot.yandex.model.GptMessageUnit;
 import com.evgeniyfedorchenko.gptbot.yandex.model.GptRequestBody;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
+import okhttp3.*;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.web.reactive.function.client.WebClient;
 import org.telegram.telegrambots.meta.api.methods.PartialBotApiMethod;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
+
+import static com.evgeniyfedorchenko.gptbot.configuration.OkHttpClientConfiguration.MT_APPLICATION_JSON;
+import static com.evgeniyfedorchenko.gptbot.yandex.service.IamTokenSupplier.IAM_TOKEN;
 
 @Slf4j
 @Component(YandexGptService.SERVICE_NAME)
@@ -30,9 +33,9 @@ import java.util.concurrent.TimeUnit;
 public class YandexGptService implements AiModelService {
 
     public static final String SERVICE_NAME = "YandexGptService";
-    protected static String IAM_TOKEN;
 
-    private final WebClient webClient;
+    private final OkHttpClient httpClient;
+    private final ObjectMapper objectMapper;
     private final YandexProperties yandexProperties;
     private final HistoryRedisService historyRedisService;
 
@@ -42,12 +45,12 @@ public class YandexGptService implements AiModelService {
 
         String userChatId = String.valueOf(inputMess.getChatId());
         GptMessageUnit question = new GptMessageUnit(GptMessageUnit.Role.USER.getRole(), inputMess.getText());
-        log.info("USER: {}", inputMess.getText());
 
         List<GptMessageUnit> history = historyRedisService.getHistory(userChatId);
         history.add(question);
 
-        GptAnswer answer = this.buildRequest(history);
+        GptAnswer answer = this.createPostRequest(yandexProperties.getChatbotBaseUrl(), history, GptAnswer.class)
+                .orElseThrow();
 
         GptMessageUnit answerUnit = answer.result().alternatives().getLast().message();
 
@@ -55,7 +58,6 @@ public class YandexGptService implements AiModelService {
             historyRedisService.addMessage(userChatId, question);
             historyRedisService.addMessage(userChatId, answerUnit);
         });
-        log.info("ASSISTANT: {}", answerUnit.text());
         return this.getSendingObj(answer, userChatId);
 
     }
@@ -82,36 +84,34 @@ public class YandexGptService implements AiModelService {
                 .block();
     }
 
-    @Scheduled(fixedDelay = 10, timeUnit = TimeUnit.HOURS) // Каждые 10 часов
-    public void updateIamToken() {
 
-        String iamToken = webClient.post()
-                .uri(yandexProperties.getIamTokenUpdaterUrl())
-                .bodyValue(new IamTokenRequest(yandexProperties.getOauthToken()))
-                .retrieve()
-                .bodyToMono(IamTokenResponse.class)
-                .map(IamTokenResponse::getIamToken)
-                .block();
 
-        log.info("IamToken updated");
-        IAM_TOKEN = iamToken;
+    public <RESP> Optional<RESP> createPostRequest(String url, Object requestBody, Class<RESP> responseType) {
+        try {
+            String serializedBody = objectMapper.writeValueAsString(requestBody);
 
+            Request request = new Request.Builder()
+                    .url(url)
+                    .header(HttpHeaders.CONTENT_TYPE, org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + IAM_TOKEN)
+                    .header("x-folder-id", yandexProperties.getFolderId())
+                    .post(RequestBody.create(serializedBody, MT_APPLICATION_JSON))
+                    .build();
+
+            try (Response response = httpClient.newCall(request).execute()) {
+                return response.isSuccessful() && response.body() != null
+                        ? Optional.of(objectMapper.readValue(response.body().string(), responseType))
+                        : Optional.empty();
+            }
+
+        } catch (JsonProcessingException ex) {
+            throw new GptTelegramBotException("Request was successful, but it wasn't possible to deserialize the response into an object of the \"%s\" class. Ex:{}".formatted(responseType), ex);
+
+        } catch (IOException e) {
+            throw new GptTelegramBotException("Cannot execute call of the request or read response body");
+        }
     }
 
-    @Getter
-    @AllArgsConstructor
-    static final class IamTokenRequest {
-        @ToString.Exclude
-        private final String yandexPassportOauthToken;
-    }
 
-    @Getter
-    @ToString
-    @AllArgsConstructor
-    static final class IamTokenResponse {
-        @ToString.Exclude
-        private final String expiresAt;
-        private final String iamToken;
-    }
 
 }
