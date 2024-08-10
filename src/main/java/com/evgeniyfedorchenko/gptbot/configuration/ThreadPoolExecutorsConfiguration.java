@@ -8,19 +8,24 @@ import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.validation.annotation.Validated;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @Getter
 @Setter
 @Validated
+@EnableAsync
 @Configuration
 @ConfigurationProperties(
-        prefix = ThreadPoolTaskExecutorConfiguration.CONFIGURATION_PREFIX,
+        prefix = ThreadPoolExecutorsConfiguration.CONFIGURATION_PREFIX,
         ignoreUnknownFields = false,
         ignoreInvalidFields = false
 )
-public class ThreadPoolTaskExecutorConfiguration {
+public class ThreadPoolExecutorsConfiguration {
 
     static final String CONFIGURATION_PREFIX = "executor";
     private static final int POOL_SIZE = Runtime.getRuntime().availableProcessors();
@@ -51,6 +56,11 @@ public class ThreadPoolTaskExecutorConfiguration {
 
         executor.initialize();
         return executor;
+    }
+
+    @Bean
+    public ExecutorService executorServiceOfVirtual() {
+        return Executors.newVirtualThreadPerTaskExecutor();
     }
 
 }

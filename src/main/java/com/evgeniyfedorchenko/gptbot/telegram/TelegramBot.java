@@ -1,32 +1,38 @@
 package com.evgeniyfedorchenko.gptbot.telegram;
 
+import com.evgeniyfedorchenko.gptbot.data.UserModeRedisService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.PartialBotApiMethod;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.User;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
 
 @Slf4j
 @Component
 public class TelegramBot extends TelegramLongPollingBot {
 
     private final TelegramExecutor telegramExecutor;
-    private final ThreadPoolTaskExecutor taskExecutor;
+    private final ExecutorService executorServiceOfVirtual;
     private final TelegramDistributor telegramDistributor;
+    private final UserModeRedisService userModeCache;
+    public static final ThreadLocal<User> localUser = new ThreadLocal<>();
+
 
     public TelegramBot(@Value("${telegram-bot.token}") String botToken,
                        TelegramExecutor telegramExecutor,
-                       @Qualifier("threadPoolTaskExecutor") ThreadPoolTaskExecutor taskExecutor,
-                       TelegramDistributor telegramDistributor) {
+                       ExecutorService executorServiceOfVirtual,
+                       TelegramDistributor telegramDistributor,
+                       UserModeRedisService userModeCache) {
         super(botToken);
         this.telegramExecutor = telegramExecutor;
-        this.taskExecutor = taskExecutor;
+        this.executorServiceOfVirtual = executorServiceOfVirtual;
         this.telegramDistributor = telegramDistributor;
+        this.userModeCache = userModeCache;
     }
 
     @Override
@@ -47,17 +53,24 @@ public class TelegramBot extends TelegramLongPollingBot {
 
         if (update != null) {
 
-            log.debug("Processing has BEGUN for updateID {}", update.getUpdateId());
+            localUser.set(update.getMessage().getFrom());
 
-            CompletableFuture.supplyAsync(() -> telegramDistributor.distribute(update), taskExecutor)
+            CompletableFuture.supplyAsync(() -> {
+                        log.debug("Processing has BEGUN for updateID {}", update.getUpdateId());
+                        return telegramDistributor.distribute(update);
+
+                    }, executorServiceOfVirtual)
+
                     .thenAccept(result -> {
                         telegramExecutor.send(result);
                         log.debug("Processing has FINISHED for updateID {}", update.getUpdateId());
                     })
 
                     .exceptionally(ex -> {
-                        log.error("Processing has FAILED for updateID {}", update.getUpdateId(), ex);
-                        log.error("ex: ", ex.getCause());
+                        if (userModeCache.getMode(update.getMessage().getChatId()).equals(Mode.YANDEX_ART_HOLDED)) {
+                            userModeCache.setMode(update.getMessage().getChatId(), Mode.YANDEX_ART);
+                        }
+                        log.error("Processing has FAILED for updateID {}. Ex: ", update.getUpdateId(), ex);
                         return null;
                     });
         }
