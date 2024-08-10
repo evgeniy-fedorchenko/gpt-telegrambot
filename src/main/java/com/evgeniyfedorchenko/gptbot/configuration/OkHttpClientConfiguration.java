@@ -1,7 +1,6 @@
 package com.evgeniyfedorchenko.gptbot.configuration;
 
 import com.evgeniyfedorchenko.gptbot.configuration.interceptor.HttpLogInterceptor;
-import com.evgeniyfedorchenko.gptbot.configuration.interceptor.NetworkStatsInterceptor;
 import com.evgeniyfedorchenko.gptbot.configuration.properties.OkhttpProperties;
 import lombok.AllArgsConstructor;
 import okhttp3.ConnectionPool;
@@ -21,7 +20,6 @@ public class OkHttpClientConfiguration {
 
     private final OkhttpProperties properties;
     private final HttpLogInterceptor httpLogInterceptor;
-    private final NetworkStatsInterceptor networkStatsInterceptor;
 
     @Bean
     public OkHttpClient okHttpClient() {
@@ -46,7 +44,6 @@ public class OkHttpClientConfiguration {
                 .retryOnConnectionFailure(false)
 
                 .addInterceptor(httpLogInterceptor)
-                .addNetworkInterceptor(networkStatsInterceptor)
 
                 .build();
     }
