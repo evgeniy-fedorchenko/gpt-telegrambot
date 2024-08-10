@@ -1,8 +1,8 @@
 package com.evgeniyfedorchenko.gptbot.telegram;
 
+import com.evgeniyfedorchenko.gptbot.configuration.properties.TelegramProperties;
 import com.evgeniyfedorchenko.gptbot.data.UserModeRedisService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.PartialBotApiMethod;
@@ -20,24 +20,25 @@ public class TelegramBot extends TelegramLongPollingBot {
     private final ExecutorService executorServiceOfVirtual;
     private final TelegramDistributor telegramDistributor;
     private final UserModeRedisService userModeCache;
+    private final TelegramProperties telegramProperties;
     public static final ThreadLocal<User> localUser = new ThreadLocal<>();
 
-
-    public TelegramBot(@Value("${telegram-bot.token}") String botToken,
-                       TelegramExecutor telegramExecutor,
+    public TelegramBot(TelegramExecutor telegramExecutor,
                        ExecutorService executorServiceOfVirtual,
                        TelegramDistributor telegramDistributor,
-                       UserModeRedisService userModeCache) {
-        super(botToken);
+                       UserModeRedisService userModeCache,
+                       TelegramProperties telegramProperties) {
+        super(telegramProperties.getToken());
         this.telegramExecutor = telegramExecutor;
         this.executorServiceOfVirtual = executorServiceOfVirtual;
         this.telegramDistributor = telegramDistributor;
         this.userModeCache = userModeCache;
+        this.telegramProperties = telegramProperties;
     }
 
     @Override
     public String getBotUsername() {
-        return "gpt_exp_bot";
+        return telegramProperties.getUsername();
     }
 
     /**
