@@ -34,5 +34,4 @@ build/
 /.mvn/wrapper/maven-wrapper.properties
 /mvnw
 /mvnw.cmd
-
-/src/main/resources/secret.properties
+/.env
