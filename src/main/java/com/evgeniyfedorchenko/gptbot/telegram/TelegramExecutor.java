@@ -42,7 +42,7 @@ public class TelegramExecutor extends DefaultAbsSender {
 
                 case SendMessage sendMessage -> {
                     sendMessage.enableMarkdown(true);
-                        execute(sendMessage);
+                    execute(sendMessage);
                 }
                 case EditMessageText editMessageText -> {
                     editMessageText.enableMarkdown(true);
@@ -89,8 +89,8 @@ public class TelegramExecutor extends DefaultAbsSender {
     public Message sendAndReturn(SendMessage messToSend) {
         try {
             return execute(messToSend);
-        } catch (TelegramApiException e) {
-            log.error("TelegramApiException was thrown. Cause: ", e);
+        } catch (TelegramApiException ex) {
+            log.error("TelegramApiException was thrown. Cause: ", ex);
         }
         return null;
     }

@@ -1,13 +1,11 @@
 package com.evgeniyfedorchenko.gptbot.yandex.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.annotation.Nullable;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
 import lombok.Getter;
-
-import java.util.List;
 
 /**
  * Класс, представляющий ответ модели {@code YandexART}, который она предоставляет СРАЗУ после получения запроса,
@@ -50,13 +48,30 @@ public class ArtAnswer {
     @Nullable
     private final String metadata;
 
-    /** Детальная информация об ошибке. Присутствует только в случае провала */
+    // TODO 10.08.2024 23:15: поправить структуру объекта (часть с Error    )
+    /** Обычная ошибка, например "кончился лимит токенов". Присутствует только в случае провала */
+//    @Nullable
+//    private final Error error;
+
+    /** Грубая ошибка, например нарушение политики использования. Возвращается с {@code HttpStatus = 4хх/5хх} */
     @Nullable
-    private final Error error;
+    @JsonProperty("error")
+    private final String errorString;
+
+    /**
+     * Код грубой ошибки. Возвращается с {@code HttpStatus = 4хх/5хх}<br>
+     * Значение перечисления <a href="https://github.com/googleapis/googleapis/blob/master/google/rpc/code.proto">google.rpc.Code</a>
+     */
+    @Nullable
+    private final Integer code;
 
     /** Нормальный ответ от модели в случае успеха генерации. Содержит готовое изображение */
     @Nullable
     private final ArtCompleteResponse response;
+
+    public boolean hasErrors() {
+        return errorString != null;
+    }
 
 
     /**
@@ -68,8 +83,8 @@ public class ArtAnswer {
      * @param message Краткое пояснение к ошибке, подробнее см. <a href="https://github.com/googleapis/googleapis/blob/master/google/rpc/code.proto">google.rpc.Code</a>
      * @param details Список сообщений, содержащих сведения об ошибке
      */
-    public record Error(int code, @NotBlank String message, @NotNull List<String> details) {
-    }
+//    public record Error(int code, @NotBlank String message, @NotNull List<String> details) {
+//    }
 
     /**
      * Объект с результатом успешного процесса генерации, содержащий результат, закодированный в {@code Base64}
@@ -77,7 +92,7 @@ public class ArtAnswer {
      * @param image        Сам результат операции - изображение в кодировке {@code Base64}
      * @param modelVersion Номер модели, сгенерировавшей это изображение. todo проверить
      */
-    public record ArtCompleteResponse(String image, String modelVersion) {
+    public record ArtCompleteResponse(String image, String modelVersion) { // TODO 10.08.2024 23:29: переделать в класс, чтоб не было нал-алармов
     }
 }
 

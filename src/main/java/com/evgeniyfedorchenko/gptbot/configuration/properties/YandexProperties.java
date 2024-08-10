@@ -25,9 +25,11 @@ public class YandexProperties {
     static final String CONFIGURATION_PREFIX = "yandex";
 
     @NotBlank
+    @URL(protocol = "https")
     private String chatbotBaseUrl;
 
     @NotBlank
+    @URL(protocol = "https")
     private String artModelBaseUrl;
 
     @NotBlank

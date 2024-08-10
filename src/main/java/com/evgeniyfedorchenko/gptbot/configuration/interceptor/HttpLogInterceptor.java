@@ -23,14 +23,19 @@ public class HttpLogInterceptor implements Interceptor {
 
         if (log.isTraceEnabled()) {
 
-            Buffer buffer = new Buffer();
+            String utf8 = "";
             if (request.body() != null) {
+                Buffer buffer = new Buffer();
                 request.body().writeTo(buffer);
+
+                utf8 = buffer.size() > 500
+                        ? buffer.readUtf8().replaceAll("\n", "").substring(500)
+                        : buffer.readUtf8();
             }
             log.trace("\nRequest line: {}\nHeaders     : {}\nRequest body: {}",
                     request.method() + " " + request.url(),
                     request.headers().toString().replaceAll("\n", ", "),
-                    buffer.readUtf8().replaceAll("\n", ""));
+                    utf8);
         }
 
         Response response = chain.proceed(request);
@@ -46,8 +51,8 @@ public class HttpLogInterceptor implements Interceptor {
         log.trace("\nStatus       : {}\nHeaders      : {}\nTime spent   : {}\nResponse body: {}",
                 response.code() + " " + response.message(),
                 response.headers().toString().replaceAll("\n", ", "),
-                response.receivedResponseAtMillis() - response.sentRequestAtMillis() + "ms",
-                bodyStr.length() > 500 ? bodyStr.substring(bodyStr.length() - 500) : bodyStr);
+                response.receivedResponseAtMillis() - response.sentRequestAtMillis() + " ms",
+                bodyStr.length() > 2000 ? bodyStr.substring(bodyStr.length() - 2000) : bodyStr);
 
         return respBody != null
                 ? response.newBuilder()
