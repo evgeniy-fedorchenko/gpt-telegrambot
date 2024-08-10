@@ -11,19 +11,20 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
 
 import static com.evgeniyfedorchenko.gptbot.configuration.OkHttpClientConfiguration.MT_APPLICATION_JSON;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
+@Async("executorServiceOfVirtual")
 public class IamTokenSupplier {
 
     public static String IAM_TOKEN;
@@ -35,10 +36,10 @@ public class IamTokenSupplier {
     @Scheduled(fixedDelay = 10, timeUnit = TimeUnit.HOURS) // Каждые 10 часов
     public void updateIamToken() {
 
-        IamTokenResponse iamTokenResponse = supplierResponse.apply(0L).orElseGet(() -> {
+        IamTokenResponse iamTokenResponse = this.executeLater(0L).orElseGet(() -> {
 
             log.warn("Cannot update IAM-token on the first try, try again...");
-            Optional<IamTokenResponse> iamTokenResponseOpt = supplierResponse.apply(5_000L);
+            Optional<IamTokenResponse> iamTokenResponseOpt = executeLater(5_000L);
 
             if (iamTokenResponseOpt.isEmpty()) {
                 log.error("Cannot update IAM-token on the second try, skipped");
@@ -53,18 +54,14 @@ public class IamTokenSupplier {
         }
     }
 
-    private final Function<Long, Optional<IamTokenResponse>> supplierResponse = waitMillis -> {
+    private Optional<IamTokenResponse> executeLater(long waitMillis) {
         try {
             Thread.sleep(waitMillis);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-        IamTokenRequest requestBody = new IamTokenRequest(yandexProperties.getOauthToken());
-        try {
+            String body = objectMapper.writeValueAsString(new IamTokenRequest(yandexProperties.getOauthToken()));
 
             Request request = new Request.Builder()
                     .url(yandexProperties.getIamTokenUpdaterUrl())
-                    .post(RequestBody.create(objectMapper.writeValueAsString(requestBody), MT_APPLICATION_JSON))
+                    .post(RequestBody.create(body, MT_APPLICATION_JSON))
                     .build();
 
             try (Response response = httpClient.newCall(request).execute()) {
@@ -72,25 +69,24 @@ public class IamTokenSupplier {
                         ? Optional.of(objectMapper.readValue(response.body().string(), IamTokenResponse.class))
                         : Optional.empty();
             }
-        } catch (IOException exception) {
-            throw new RuntimeException(exception);
+        } catch (IOException | InterruptedException ex) {
+            log.error("IAM token update failed. Ex: ", ex);
+            return Optional.empty();
         }
-
-    };
+    }
 
     @Getter
     @AllArgsConstructor
-    static final class IamTokenRequest {
-        @ToString.Exclude
+    private static final class IamTokenRequest {
         private final String yandexPassportOauthToken;
     }
 
     @Getter
     @ToString
     @AllArgsConstructor
-    static final class IamTokenResponse {
-        @ToString.Exclude
+    private static final class IamTokenResponse {
         private final String expiresAt;
+        @ToString.Exclude
         private final String iamToken;
     }
 
