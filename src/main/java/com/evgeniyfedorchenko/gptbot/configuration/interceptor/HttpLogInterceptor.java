@@ -29,7 +29,7 @@ public class HttpLogInterceptor implements Interceptor {
                 request.body().writeTo(buffer);
 
                 utf8 = buffer.size() > 500
-                        ? buffer.readUtf8().replaceAll("\n", "").substring(500)
+                        ? buffer.readUtf8().replaceAll("\n", "").substring(499)
                         : buffer.readUtf8();
             }
             log.trace("\nRequest line: {}\nHeaders     : {}\nRequest body: {}",

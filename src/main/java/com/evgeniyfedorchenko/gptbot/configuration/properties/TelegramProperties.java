@@ -22,7 +22,7 @@ public class TelegramProperties {
     static final String CONFIGURATION_PREFIX = "telegram-bot";
 
     @NotBlank
-    @Pattern(regexp = "^\\d{10}:[A-Za-z\\d]{35}$")   // Regexp: 10 цифр, затем двоеточие и еще 35 латинских букв/цифр
+    @Pattern(regexp = "^\\d{10}:[A-Za-z\\d_]{35}$")   // Regexp: 10 цифр, затем двоеточие и еще 35 латинских букв/цифр
     private String token;
 
     @NotBlank

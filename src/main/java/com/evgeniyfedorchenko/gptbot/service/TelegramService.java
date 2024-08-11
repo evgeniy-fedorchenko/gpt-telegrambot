@@ -26,7 +26,7 @@ public class TelegramService {
      * в данный момент бот задан работой. Использует один поток, каждая таска должна быть запущена асинхронно в
      * виртуальном потоке, чтобы не этот шедулер не ждал ее выполнения, а приступал к следующей мгновенно
      *
-     * @see TelegramService#scheduleNotifications(String chatId, Mode userMode)
+     * @see TelegramService#scheduleChatAction(String chatId, Mode userMode)
      */
     private static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
@@ -44,7 +44,7 @@ public class TelegramService {
             String chatId = String.valueOf(inMess.getChatId());
 
             TelegramBot.localUser.set(inMess.getFrom());
-            Future<?> future = scheduleNotifications(chatId, currentMode);
+            Future<?> future = scheduleChatAction(chatId, currentMode);
 
             AiModelService<REQ, RESP> aiModelService = getAiModelService(currentMode);
 
@@ -53,16 +53,18 @@ public class TelegramService {
             }
 
             REQ request = aiModelService.prepareRequest(inMess);
+
             String currentUrl = aiModelService.getModelUrl();
             Class<RESP> currentResponseType = aiModelService.getResponseType();
 
             RESP responseOpt = aiModelService.buildAndExecutePost(currentUrl, request, currentResponseType)
                     .orElseThrow();
 
+            PartialBotApiMethod<? extends Serializable> result = aiModelService.responseProcess(responseOpt, inMess);
+
             future.cancel(true);
             TelegramBot.localUser.remove();
-
-            return aiModelService.responseProcess(responseOpt, inMess);
+            return result;
 
         } catch (Exception ex) {
             log.error("Cannot processing update {}. Ex: ", update, ex);
@@ -88,7 +90,7 @@ public class TelegramService {
         return null;
     }
 
-    private Future<?> scheduleNotifications(String chatId, Mode mode) {
+    private Future<?> scheduleChatAction(String chatId, Mode mode) {
 
         SendChatAction sendChatAction = new SendChatAction();
         sendChatAction.setChatId(chatId);
