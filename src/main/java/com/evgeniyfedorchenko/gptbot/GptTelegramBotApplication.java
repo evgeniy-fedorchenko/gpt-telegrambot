@@ -14,9 +14,7 @@ public class GptTelegramBotApplication {
 		SpringApplication.run(GptTelegramBotApplication.class, args);
 	}
 
-	// TODO 10.08.2024 16:22: кнопка для очистки истории и начала нового чата
 	// TODO 10.08.2024 16:22: генерация картинки асинхронно для юзера
-	// TODO 10.08.2024 16:23: сбор статистики в интерцепторе
 	// TODO 10.08.2024 16:23: admin-api для получения статистики (уточнить эндпоинты)
 	// TODO 10.08.2024 16:24: добавление Midjourney
 	// TODO 10.08.2024 16:26: добавление ChatGPT
