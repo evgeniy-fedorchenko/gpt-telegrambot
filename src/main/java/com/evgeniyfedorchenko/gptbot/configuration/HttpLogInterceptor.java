@@ -78,7 +78,7 @@ public class HttpLogInterceptor implements Interceptor {
         } catch (IOException ex) {
             log.error("Cannot intercept response body. Maybe it's because of OutOfMemoryError. Ex: {}", ex.getMessage());
         }
-        return respBody != null
+        return respBody != null && bodyStr != null
                 ? response.newBuilder()
                     .body(ResponseBody.create(bodyStr.getBytes(), respBody.contentType()))
                     .build()
