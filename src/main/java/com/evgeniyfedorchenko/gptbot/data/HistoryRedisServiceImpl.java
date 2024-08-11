@@ -1,6 +1,7 @@
 package com.evgeniyfedorchenko.gptbot.data;
 
 import com.evgeniyfedorchenko.gptbot.yandex.model.GptMessageUnit;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
@@ -21,7 +22,7 @@ public class HistoryRedisServiceImpl implements HistoryRedisService {
     private static final String PREFIX = "history-";
 
     @Override
-    public List<GptMessageUnit> getHistory(String userChatId) {
+    public @NotNull List<GptMessageUnit> getHistory(String userChatId) {
         List<GptMessageUnit> gptMessageUnits = redisTemplate.opsForList().range(PREFIX + userChatId, 0, -1);
         if (gptMessageUnits == null) {
             return Collections.emptyList();
@@ -34,6 +35,11 @@ public class HistoryRedisServiceImpl implements HistoryRedisService {
         redisTemplate.opsForList().rightPush(PREFIX + userChatId, gptMessageUnit);
         redisTemplate.opsForList().trim(PREFIX + userChatId, -MAX_MESSAGES, -1);
         redisTemplate.expire(PREFIX + userChatId, MESS_HISTORY_TTL);
+    }
+
+    @Override
+    public void clean(String chatId) {
+        redisTemplate.delete(PREFIX + chatId);
     }
 
 }

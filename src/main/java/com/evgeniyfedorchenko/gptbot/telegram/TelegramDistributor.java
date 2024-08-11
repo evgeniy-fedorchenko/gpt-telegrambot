@@ -1,5 +1,6 @@
 package com.evgeniyfedorchenko.gptbot.telegram;
 
+import com.evgeniyfedorchenko.gptbot.data.HistoryRedisService;
 import com.evgeniyfedorchenko.gptbot.data.UserModeRedisService;
 import com.evgeniyfedorchenko.gptbot.service.TelegramService;
 import lombok.AllArgsConstructor;
@@ -35,12 +36,13 @@ public class TelegramDistributor {
      */
     private final Function<String, SendMessage> unsupportedCommandReact;
 
-    private final UserModeRedisService userModeRedisService;
+    private final UserModeRedisService userModeCache;
     private final TelegramService telegramService;
 
-    public TelegramDistributor(UserModeRedisService userModeRedisService,
+    public TelegramDistributor(UserModeRedisService userModeCache,
+                               HistoryRedisService historyCache,
                                TelegramService telegramService) {
-        this.userModeRedisService = userModeRedisService;
+        this.userModeCache = userModeCache;
         this.telegramService = telegramService;
 
         this.unsupportedCommandReact = chatId -> new SendMessage(chatId, "Command is not supported");
@@ -50,11 +52,12 @@ public class TelegramDistributor {
                 FEEDBACK.getRepresentation(), chatId -> new SendMessage(chatId, FEEDBACK.getAnswerTest()),
 
                 YA_GPT.getRepresentation(), chatId -> {
-                    userModeRedisService.setMode(chatId, Mode.YANDEX_GPT);
+                    userModeCache.setMode(chatId, Mode.YANDEX_GPT);
+                    historyCache.clean(chatId);
                     return new SendMessage(chatId, YA_GPT.getAnswerTest());
                 },
                 YA_ART.getRepresentation(), chatId -> {
-                    userModeRedisService.setMode(chatId, Mode.YANDEX_ART);
+                    userModeCache.setMode(chatId, Mode.YANDEX_ART);
                     return new SendMessage(chatId, YA_ART.getAnswerTest());
                 }
         );
@@ -66,7 +69,7 @@ public class TelegramDistributor {
         String chatId = String.valueOf(inMess.getChatId());
 
 //        Block if user wait for the image as YANDEX_ART mode
-        Mode currentMode = userModeRedisService.getMode(chatId); // Для аварийного сброса: userModeRedisService.setMode(chatId, Mode.YANDEX_ART)
+        Mode currentMode = userModeCache.getMode(chatId); // Для аварийного сброса: userModeRedisService.setMode(chatId, Mode.YANDEX_ART)
         if (currentMode.equals(Mode.YANDEX_ART_HOLDED)) {
             return new SendMessage(chatId, "Не торопись, подожди еще немного, окей?\nНадо завершить предыдущую генерацию");
         }
@@ -84,7 +87,7 @@ public class TelegramDistributor {
     @AllArgsConstructor
     public enum Command {
 
-        START("/start", "Привет, как жизнь?\nИспользуй команды слева от поля ввода и вперед! Режим по умолчанию: gpt"),
+        START("/start", "Привет, как жизнь? \uD83D\uDC4B\nИспользуй команды слева от поля ввода и вперед!\nРежим по умолчанию: *GPT*"),
         HELP("/help", """
                 *Нейрон GPT v. 0.0.1 SNAPSHOT*
                                 
@@ -112,11 +115,12 @@ public class TelegramDistributor {
                 - Задать вопрос
                 - Рассказать о неисправности
                 
-                То не стесняйся и обязательно напиши сюда: @AzorAhai777 или сюда: @alexsubbotinn
-                Thank you bro!"),
+                Не стесняйся и обязательно напиши сюда: @AzorAhai777 или сюда: @alexsubbotinn
+                
+                Thank you bro!,
                 """),
-        YA_GPT("/gpt", "Ок, режим \"GPT\" включен"),
-        YA_ART("/art", "Ок, режим \"ART\" включен");
+        YA_GPT("/gpt", "Ок, начнем новый чат!"),
+        YA_ART("/art", "Ок, скинь мне подробное описание и подожди чуть-чуть\nЯ отравлю изображение, как только оно будет готово");
 
         private final String representation;
         private final String answerTest;
