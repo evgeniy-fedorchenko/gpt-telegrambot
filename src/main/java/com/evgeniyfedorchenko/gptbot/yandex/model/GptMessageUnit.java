@@ -1,15 +1,22 @@
 package com.evgeniyfedorchenko.gptbot.yandex.model;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 /**
  * История сообщений. Тот контекст, который должна "помнить" модель. Нужно передавать его в каждом запросе
- *
- * @param role Роль отправителя данного сообщения. Чтоб модель понимала, что отвечала она, а что юзер
- * @param text Текстовое содержимое сообщения
  */
-public record GptMessageUnit(String role, String text) {
+@Getter
+@AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class GptMessageUnit {
+
+    /** Роль отправителя данного сообщения. Чтоб модель понимала, что отвечала она, а что юзер */
+    private final String role;
+
+    /** Текстовое содержимое сообщения */
+    private final String text;
 
     /**
      * Идентификаторы отправителей сообщений. Передаются в объекте {@link GptMessageUnit}. Чтоб модель видела

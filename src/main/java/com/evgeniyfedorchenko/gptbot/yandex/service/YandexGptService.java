@@ -87,7 +87,7 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
                 executorServiceOfVirtual
         );
 
-        return new SendMessage(chatId, answer.text());
+        return new SendMessage(chatId, answer.getText());
     }
 
     @Override

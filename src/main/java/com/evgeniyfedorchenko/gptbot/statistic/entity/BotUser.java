@@ -27,11 +27,13 @@ public class BotUser {
     @Column(unique = true)
     private String username;
 
+    private String name;
+
     private int yaGptRequestCount;
     private int yaArtRequestCount;
-    private long yaTokenSpent;
 
     @CurrentTimestamp(source=VM)
+    @Column(columnDefinition = "TIMESTAMP(0) DEFAULT CURRENT_TIMESTAMP")
     private LocalDateTime lastModified;
 
 }
