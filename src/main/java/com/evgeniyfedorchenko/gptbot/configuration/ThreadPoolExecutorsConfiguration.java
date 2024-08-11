@@ -59,8 +59,8 @@ public class ThreadPoolExecutorsConfiguration {
     }
 
     @Bean
-    public ExecutorService executorServiceOfVirtual() {
-        return Executors.newVirtualThreadPerTaskExecutor();
+    public ExecutorService executorServiceOfVirtual(VirtualThreadFactory threadFactory) {
+        return Executors.newThreadPerTaskExecutor(threadFactory);
     }
 
 }
