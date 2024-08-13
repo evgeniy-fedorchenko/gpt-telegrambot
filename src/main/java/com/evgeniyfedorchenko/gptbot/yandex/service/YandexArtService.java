@@ -30,9 +30,7 @@ import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageTe
 import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.Message;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.Serializable;
+import java.io.*;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.Map;
@@ -51,10 +49,11 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
 
     /**
      * Карта маппинга нестандартных ответов сети {@code YandexART} и ответов этого бота.<br>
-     * Нестандартным считается ответ, когда нейросеть отказалась генерировать изображение по промпту по различным
-     * причинам, например из-за аморального содержания промпта или нарушения её политики использования. Такие ответы
-     * приходят со статусом {@link HttpStatus#BAD_REQUEST} и непустым полем {@link ArtAnswer#getErrorString()}. Эта карта
-     * соотносит ответы сети из {@link ArtAnswer#getErrorString()} и текстом которым ответит этот бот на такой запрос
+     * Нестандартным считается ответ, когда нейросеть отказалась генерировать изображение по промпту по
+     * различным причинам, например из-за аморального содержания промпта или нарушения её политики использования.
+     * Такие ответы приходят со статусом {@link HttpStatus#BAD_REQUEST} и непустым полем
+     * {@link ArtAnswer#getErrorString()}. Эта карта соотносит ответы сети из {@link ArtAnswer#getErrorString()}
+     * и текстом которым ответит этот бот на такой запрос
      * <lu>
      * <li><b>key</b> - текст ответа нейронки, в случае отказа генерировать изображение</li>
      * <li><b>value</b>- ответ, который этот бот отправил юзеру</li>
@@ -72,13 +71,14 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
     private static final String DEFAULT_FILED_ANSWER_MAP_VALUE = "Прости, но нейросеть отказалась генерировать изображение по такому промпту, попробуй как-нибудь изменить его";
 
     /**
-     * Счетчик процентов. Показывает прогресс генерации изображения. На самом деле не имеет связи с процессом генерации,
-     * а просто постепенно увеличивается с все замедляющейся скоростью, никогда не достигая {@code 100%},
+     * Счетчик процентов. Показывает прогресс генерации изображения. На самом деле не имеет связи с процессом
+     * генерации, а просто постепенно увеличивается с все замедляющейся скоростью, никогда не достигая {@code 100%},
      * расчет значения происходит в методе {@link YandexArtService#calculatePercentReady(double current)}<br>
      * Значение в начале генерации - {@code 1%}<br>
      * После каждой генерации сбрасывается на {@code 1%}
      */
     private double percentReady = 1;
+
     /**
      * Сообщение, отправляемое юзеру, для уведомления его о процессе генерации. Отправляемое сообщение - объект
      * {@link EditMessageText}, после отправки возвращающий этот объект. Поле нужно для хранения контекста этого
@@ -146,8 +146,8 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
         }
 
         ArtAnswer secondResponse = retryTemplate.execute(context ->
-            this.processRetryInvoke(this.retryInvoke(firstResponse.getId()), chatId)
-                    .orElseThrow(() -> new RetryAttemptNotReadyException("The picture is not ready yet"))
+                this.processRetryInvoke(this.retryInvoke(firstResponse.getId()), chatId)
+                        .orElseThrow(() -> new RetryAttemptNotReadyException("The picture is not ready yet"))
         );
 
         return secondResponse.hasErrors()
@@ -208,7 +208,7 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
 
             }, executorServiceOfVirtual);
 
-        return Optional.empty();
+            return Optional.empty();
         }
     }
 
@@ -221,10 +221,15 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
     }
 
     private SendPhoto generateComplete(ArtAnswer answer, String chatId) {
-        byte[] bytes = Base64.getDecoder().decode(answer.getResponse().image());
-        InputFile result = new InputFile(new ByteArrayInputStream(bytes), "result");
 
-        return new SendPhoto(chatId, result);
+        try (PipedOutputStream pipedOut = new PipedOutputStream();
+             PipedInputStream pipedIn = new PipedInputStream(pipedOut)) {
+
+            pipedOut.write(Base64.getDecoder().decode(answer.getResponse().image()));
+            return new SendPhoto(chatId, new InputFile(pipedIn, "result"));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private Double calculatePercentReady(double current) {

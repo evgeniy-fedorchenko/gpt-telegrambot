@@ -35,7 +35,6 @@ public class RedisConfiguration {
         Jackson2JsonRedisSerializer<GptMessageUnit> messSerializer
                 = new Jackson2JsonRedisSerializer<>(objectMapper, GptMessageUnit.class);
 
-
         redisTemplate.setKeySerializer(new StringRedisSerializer());
         redisTemplate.setValueSerializer(messSerializer);
 

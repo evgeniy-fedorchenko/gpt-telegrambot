@@ -1,5 +1,6 @@
 package com.evgeniyfedorchenko.gptbot.configuration;
 
+import com.evgeniyfedorchenko.gptbot.exception.RetryAttemptNotReadyException;
 import jakarta.validation.constraints.Positive;
 import lombok.Getter;
 import lombok.Setter;
@@ -11,6 +12,7 @@ import org.springframework.retry.policy.SimpleRetryPolicy;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.validation.annotation.Validated;
+import reactor.core.Exceptions;
 
 import java.util.Collections;
 
@@ -28,17 +30,26 @@ public class RetryTemplateConfiguration {
 
     static final String CONFIGURATION_PREFIX = "retry";
 
+    /**
+     * Максимальное количество попыток выполнения операции.
+     * Определяет, сколько раз будет предпринята попытка выполнить операцию, прежде чем возникнет исключение.
+     */
     @Positive
     private int maxAttempts;
+
+    /**
+     * Период ожидания между попытками, исчисляется в {@link java.util.concurrent.TimeUnit#MILLISECONDS}
+     * Определяет время ожидания перед следующей попыткой выполнения операции в случае неудачи.
+     * Значение должно быть положительным целым числом, представляющим время в миллисекундах.
+     */
     @Positive
     private long backOffPeriodMillis;
 
     @Bean
     public RetryTemplate retryTemplate() {
 
-        // TODO 07.08.2024 11:28 - Создать свое исключение под фейл на ретри
         SimpleRetryPolicy retryPolicy = new SimpleRetryPolicy(
-                maxAttempts, Collections.singletonMap(Exception.class, true)
+                maxAttempts, Collections.singletonMap(RetryAttemptNotReadyException.class, true)
         );
 
         FixedBackOffPolicy fixedBackOffPolicy = new FixedBackOffPolicy();
