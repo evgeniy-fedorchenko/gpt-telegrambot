@@ -30,9 +30,7 @@ import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageTe
 import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.Message;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.Serializable;
+import java.io.*;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.Map;
@@ -146,8 +144,8 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
         }
 
         ArtAnswer secondResponse = retryTemplate.execute(context ->
-            this.processRetryInvoke(this.retryInvoke(firstResponse.getId()), chatId)
-                    .orElseThrow(() -> new RetryAttemptNotReadyException("The picture is not ready yet"))
+                this.processRetryInvoke(this.retryInvoke(firstResponse.getId()), chatId)
+                        .orElseThrow(() -> new RetryAttemptNotReadyException("The picture is not ready yet"))
         );
 
         return secondResponse.hasErrors()
@@ -208,7 +206,7 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
 
             }, executorServiceOfVirtual);
 
-        return Optional.empty();
+            return Optional.empty();
         }
     }
 
@@ -221,10 +219,15 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
     }
 
     private SendPhoto generateComplete(ArtAnswer answer, String chatId) {
-        byte[] bytes = Base64.getDecoder().decode(answer.getResponse().image());
-        InputFile result = new InputFile(new ByteArrayInputStream(bytes), "result");
 
-        return new SendPhoto(chatId, result);
+        try (PipedOutputStream pipedOut = new PipedOutputStream();
+             PipedInputStream pipedIn = new PipedInputStream(pipedOut)) {
+
+            pipedOut.write(Base64.getDecoder().decode(answer.getResponse().image()));
+            return new SendPhoto(chatId, new InputFile(pipedIn, "result"));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private Double calculatePercentReady(double current) {
