@@ -1,5 +1,6 @@
 package com.evgeniyfedorchenko.gptbot.service;
 
+import com.evgeniyfedorchenko.gptbot.aop.Log;
 import com.evgeniyfedorchenko.gptbot.telegram.Mode;
 import com.evgeniyfedorchenko.gptbot.telegram.TelegramBot;
 import com.evgeniyfedorchenko.gptbot.telegram.TelegramExecutor;
@@ -36,6 +37,7 @@ public class TelegramService {
     private final ApplicationContext applicationContext;
     private final TelegramExecutor telegramExecutor;
 
+    @Log
     public <REQ, RESP> PartialBotApiMethod<? extends Serializable> processing(Update update, Mode currentMode) {
 
         try {

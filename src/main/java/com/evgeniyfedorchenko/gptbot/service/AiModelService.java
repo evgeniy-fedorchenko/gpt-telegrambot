@@ -1,5 +1,6 @@
 package com.evgeniyfedorchenko.gptbot.service;
 
+import com.evgeniyfedorchenko.gptbot.telegram.TelegramExecutor;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.http.HttpStatus;
 import org.telegram.telegrambots.meta.api.methods.PartialBotApiMethod;
@@ -51,12 +52,34 @@ public interface AiModelService<REQ, RESP> {
      */
     Optional<RESP> buildAndExecutePost(String url, Object requestBody, Class<RESP> responseType) throws IOException;
 
+    /**
+     * Метод для постобработки ответов нейросети, кеширования, сбор статистики, и подготовка объектов, пригодных
+     * для отправки посредством Телеграм-бота. По возможности, как можно больше операций должны проводиться
+     * асинхронно, чтобы метод мог как можно скорее предоставить готовый к отправке объект
+     *
+     * @param response   десериализованный, необработанный ответ от, который предоставила нейросеть
+     * @param sourceMess исходный объект сообщения, послуживший источником данных для нейросети
+     * @return объект, готовый к немедленной отправке посредством {@link TelegramExecutor#send(PartialBotApiMethod)}
+     */
     PartialBotApiMethod<? extends Serializable> responseProcess(RESP response, Message sourceMess);
 
+    /**
+     * Метод для предоставления полного и корректного интернет http-адреса. По этому адресу будет отправлен
+     * http-запрос к целевой нейросети, которая обслуживается в конкретной реализации. Адрес должен содержать
+     * все необходимое, включая установленные параметры пути и переменные пути
+     *
+     * @return полный url для доступа к целевой нейросети
+     */
     String getModelUrl();
 
+    /**
+     * Вспомогательный метод для метода отправки запроса методом {@link AiModelService#buildAndExecutePost}.
+     * Возвращенное значение этого метода будет использовано для получения информации о том, в объект какого класса
+     * должен быть десериализован объект, полученный в теле http-ответа от целевой нейросети
+     *
+     * @return объект класса, в экземпляр которого должен быть десериазизован ответ полученный путем http-запроса,
+     * совершенного в {@link AiModelService#buildAndExecutePost(String, Object, Class)}
+     */
     Class<RESP> getResponseType();
-
-    // TODO 10.08.2024 22:59: дописать документацию к AiModelService
 
 }
