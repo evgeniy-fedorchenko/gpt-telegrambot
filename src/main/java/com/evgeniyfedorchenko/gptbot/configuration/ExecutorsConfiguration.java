@@ -2,7 +2,6 @@ package com.evgeniyfedorchenko.gptbot.configuration;
 
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Positive;
-import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
@@ -16,6 +15,7 @@ import org.springframework.validation.annotation.Validated;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ScheduledExecutorService;
 
 @Getter
 @Setter
@@ -23,11 +23,11 @@ import java.util.concurrent.RejectedExecutionException;
 @EnableAsync
 @Configuration
 @ConfigurationProperties(
-        prefix = ThreadPoolExecutorsConfiguration.CONFIGURATION_PREFIX,
+        prefix = ExecutorsConfiguration.CONFIGURATION_PREFIX,
         ignoreUnknownFields = false,
         ignoreInvalidFields = false
 )
-public class ThreadPoolExecutorsConfiguration {
+public class ExecutorsConfiguration {
 
     static final String CONFIGURATION_PREFIX = "executor";
     private static final int POOL_SIZE = Runtime.getRuntime().availableProcessors();
@@ -100,4 +100,8 @@ public class ThreadPoolExecutorsConfiguration {
         return Executors.newThreadPerTaskExecutor(threadFactory);
     }
 
+    @Bean
+    public ScheduledExecutorService singleThreadScheduledExecutorService() {
+        return Executors.newScheduledThreadPool(1);
+    }
 }

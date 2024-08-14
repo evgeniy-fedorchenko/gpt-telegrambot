@@ -23,13 +23,13 @@ import java.util.concurrent.*;
 public class TelegramService {
 
     /**
-     * Объект для планирования отправки объектов {@link SendChatAction} - т.е. для уведомления пользователя о том, что
-     * в данный момент бот задан работой. Использует один поток, каждая таска должна быть запущена асинхронно в
-     * виртуальном потоке, чтобы не этот шедулер не ждал ее выполнения, а приступал к следующей мгновенно
+     * Объект для планирования отправки объектов {@link SendChatAction} - т.е. для уведомления пользователя о том,
+     * что в данный момент бот задан работой. Использует один поток, каждая таска должна быть запущена асинхронно
+     * в виртуальном потоке, чтобы не этот шедулер не ждал ее выполнения, а приступал к следующей мгновенно
      *
      * @see TelegramService#scheduleChatAction(String chatId, Mode userMode)
      */
-    private static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+    private final ScheduledExecutorService singleThreadScheduler;
 
     private static final long SCHEDULER_RUN_TASK_PERIOD_MILLIS = 5_000L;
 
@@ -99,7 +99,7 @@ public class TelegramService {
         sendChatAction.setChatId(chatId);
         sendChatAction.setAction(mode.getActionType());
 
-        return scheduler.scheduleAtFixedRate(() ->
+        return singleThreadScheduler.scheduleAtFixedRate(() ->
                         CompletableFuture.runAsync(() -> telegramExecutor.send(sendChatAction), executorServiceOfVirtual),
                 0,
                 SCHEDULER_RUN_TASK_PERIOD_MILLIS,
