@@ -1,5 +1,6 @@
 package com.evgeniyfedorchenko.gptbot.telegram;
 
+import jakarta.annotation.Nullable;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -31,7 +32,7 @@ public class TelegramExecutor extends DefaultAbsSender {
      * @param method {@code @NotNull} Объект сообщения, готового к отправке
      * @return true, если сообщение было успешно отправлено, иначе false
      */
-    public Boolean send(PartialBotApiMethod<?> method) {
+    public boolean send(PartialBotApiMethod<?> method) {
 
         boolean suc = true;
 
@@ -86,7 +87,14 @@ public class TelegramExecutor extends DefaultAbsSender {
         }
     }
 
-    public Message sendAndReturn(SendMessage messToSend) {
+    /**
+     * Метод для отправки сообщения и возвращаемым значением {@link Message}.
+     * Возвращается {@code null}, если не удалось отправить сообщение. Это значит
+     * что было выброшено исключение, которое было подавлено и залогировано
+     * @param messToSend сообщение для отправки
+     * @return успешно отправленное сообщение
+     */
+    public @Nullable Message sendAndReturn(SendMessage messToSend) {
         try {
             return execute(messToSend);
         } catch (TelegramApiException ex) {

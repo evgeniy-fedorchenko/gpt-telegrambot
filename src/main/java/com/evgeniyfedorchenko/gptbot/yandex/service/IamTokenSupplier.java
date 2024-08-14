@@ -77,14 +77,14 @@ public class IamTokenSupplier {
 
     @Getter
     @AllArgsConstructor
-    private static final class IamTokenRequest {
+    private static class IamTokenRequest {
         private final String yandexPassportOauthToken;
     }
 
     @Getter
     @ToString
     @AllArgsConstructor
-    private static final class IamTokenResponse {
+    private static class IamTokenResponse {
         private final String expiresAt;
         @ToString.Exclude
         private final String iamToken;
