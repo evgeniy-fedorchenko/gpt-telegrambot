@@ -8,10 +8,7 @@ import com.evgeniyfedorchenko.gptbot.yandex.model.GptMessageUnit;
 import com.evgeniyfedorchenko.gptbot.yandex.model.GptRequestBody;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
+import okhttp3.*;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.PartialBotApiMethod;
@@ -34,6 +31,7 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
     public static final String SERVICE_NAME = "YandexGptService";
     private static final int MAX_COUNT_SYMBOLS = 3700;
     private static final String TOO_LONG_MESS_ANSWER = "Слишком длинное сообщение, постарайся немного сократить и уместиться в %s символов";
+    private final Object networkLock = new Object();
 
     private final OkHttpClient httpClient;
     private final ObjectMapper objectMapper;
@@ -79,10 +77,20 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
                 .post(RequestBody.create(serializedBody, MT_APPLICATION_JSON))
                 .build();
 
-        try (Response response = httpClient.newCall(request).execute()) {
+        Response response = null;
+        Call call = httpClient.newCall(request);
+        try {
+            synchronized (networkLock) {   // Only one request at a time
+                response = call.execute();
+            }
             return response.body() != null
                     ? Optional.of(objectMapper.readValue(response.body().string(), responseType))
                     : Optional.empty();
+
+        } finally {
+            if (response != null) {
+                response.close();
+            }
         }
     }
 
