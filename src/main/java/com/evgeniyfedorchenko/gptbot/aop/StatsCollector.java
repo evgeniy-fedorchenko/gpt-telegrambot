@@ -52,7 +52,7 @@ public class StatsCollector {
 
                 switch (resultOpt.get()) {
                     case GptAnswer gpt -> {
-                        int tokensSpent = gpt.result().usage().totalTokens();
+                        int tokensSpent = gpt.getResult().getUsage().getTotalTokens();
                         botUser.setYagptReqsToday(botUser.getYagptReqsToday() + 1);
                         botUser.setYagptReqsTotal(botUser.getYagptReqsTotal() + 1);
                         botUser.setTokensSpentToday(botUser.getTokensSpentToday() + tokensSpent);

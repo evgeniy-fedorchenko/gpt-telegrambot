@@ -223,7 +223,7 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
     }
 
     private SendPhoto generateComplete(ArtAnswer answer, String chatId) {
-        byte[] bytes = Base64.getDecoder().decode(answer.getResponse().image());
+        byte[] bytes = Base64.getDecoder().decode(answer.getResponse().getImage());
         InputFile result = new InputFile(new ByteArrayInputStream(bytes), "result");
 
         return new SendPhoto(chatId, result);
