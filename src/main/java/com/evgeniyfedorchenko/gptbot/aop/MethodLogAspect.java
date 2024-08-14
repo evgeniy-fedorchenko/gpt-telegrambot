@@ -1,6 +1,6 @@
 package com.evgeniyfedorchenko.gptbot.aop;
 
-import jakarta.annotation.Nullable;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -30,6 +30,7 @@ import java.util.stream.IntStream;
 public class MethodLogAspect {
 
     private final ExecutorService executorServiceOfVirtual;
+    private final ObjectMapper objectMapper;
 
     private static final String PARAMS = "-> [{}]";
     private static final String RETURN = "<- [{}]";
@@ -37,77 +38,88 @@ public class MethodLogAspect {
 
     @Around("@annotation(log)")
     public Object logMethod(ProceedingJoinPoint joinPoint, Log log) throws Throwable {
+
         MethodSignature signature = (MethodSignature) joinPoint.getSignature();
         Logger logger = LoggerFactory.getLogger(signature.getMethod().getDeclaringClass());
+        CompletableFuture<List<Object>> paramsForLogFuture = null;
+        boolean enabledForLevel = logger.isEnabledForLevel(log.level());
 
-        CompletableFuture<List<Object>> paramsForLogFuture = CompletableFuture.supplyAsync(() -> {
+        if (enabledForLevel) {
 
-            Object[] params = joinPoint.getArgs();
-            List<Integer> excludedIdxs = Arrays.stream(log.exclude()).boxed().toList();
+            paramsForLogFuture = CompletableFuture.supplyAsync(() -> {
 
-            List<Object> paramsForLog = new ArrayList<>();
-            IntStream.range(0, params.length)
-                    .forEach(i -> {
-                        if (!excludedIdxs.contains(i)) {
-                            paramsForLog.add(params[i]);
-                        }
-                    });
-            return paramsForLog;
-        }, executorServiceOfVirtual);
+                Object[] params = joinPoint.getArgs();
+                List<Integer> excludedIdxs = Arrays.stream(log.exclude()).boxed().toList();
 
-        Object result = null;
-        Throwable thrown = null;
-        BiConsumer<String, Object[]> logFunction = logFunction(logger, log.level());
-
-        try {
-            result = joinPoint.proceed();
-        } catch (Throwable ex) {
-            thrown = ex;
-            this.doLog(paramsForLogFuture, logFunction, thrown, result);
-            throw ex;
+                List<Object> paramsForLog = new ArrayList<>();
+                IntStream.range(0, params.length)
+                        .forEach(i -> {
+                            if (!excludedIdxs.contains(i)) {
+                                paramsForLog.add(params[i]);
+                            }
+                        });
+                return paramsForLog;
+            }, executorServiceOfVirtual);
         }
 
-        this.doLog(paramsForLogFuture, logFunction, thrown, result);
-        return result;
+        try {
+            Object result = joinPoint.proceed();
+            if (enabledForLevel) {
+                this.doLog(paramsForLogFuture, result, logger, log);
+            }
+            return result;
+
+        } catch (Throwable ex) {
+            if (enabledForLevel) {
+                this.doLog(paramsForLogFuture, ex, logger, log);
+            }
+            throw ex;
+        }
     }
 
     @Async("executorServiceOfVirtual")
     protected void doLog(CompletableFuture<List<Object>> paramsForLogFuture,
-                         BiConsumer<String, Object[]> logFunction,
-                         @Nullable Throwable exThrownInMethod,
-                         @Nullable Object result) {
+                         Object result,
+                         Logger logger,
+                         Log log) {
 
-            if (exThrownInMethod != null) {
-                logFunction.accept(PARAMS, new Object[]{getSafety(paramsForLogFuture)});
-                logFunction.accept(EX, new Object[]{exThrownInMethod});
-                return;
-            }
-            if (result instanceof CompletableFuture<?> resultFuture) {
-                resultFuture.whenComplete((resF, exF) -> {
-                    if (exF != null) {
-                        logFunction.accept(PARAMS, new Object[]{getSafety(paramsForLogFuture)});
-                        logFunction.accept(EX, new Object[]{exF});
-                    } else {
-                        logFunction.accept(PARAMS, new Object[]{getSafety(paramsForLogFuture)});
-                        logFunction.accept(RETURN, new Object[]{resF});
+        BiConsumer<String, String[]> logFunction = logFunction(logger, log.level());
+
+        if (result instanceof Throwable throwable) {
+            logFunction.accept(PARAMS, getSafety(paramsForLogFuture));
+            logFunction.accept(EX, new String[]{throwable.toString()});
+
+        } else if (result instanceof CompletableFuture<?> resultFuture) {
+            resultFuture.whenComplete((resF, exF) -> {
+                if (exF != null) {
+                    logFunction.accept(PARAMS, getSafety(paramsForLogFuture));
+                    logFunction.accept(EX, new String[]{exF.toString()});
+                } else {
+                    logFunction.accept(PARAMS, getSafety(paramsForLogFuture));
+                    if (log.result()) {
+                        logFunction.accept(RETURN, new String[]{resF.toString()});
                     }
-                });
-                return;
-            }
-            logFunction.accept(PARAMS, new Object[]{getSafety(paramsForLogFuture)});
-            logFunction.accept(RETURN, new Object[]{result});
-    }
+                }
+            });
 
-    private List<Object> getSafety(CompletableFuture<List<Object>> runningFuture) {
-        try {
-            return runningFuture.get();
-        } catch (InterruptedException | ExecutionException ex) {
-            log.error("Cannot log param as aspect. ParamsFuture are filed. Ex: {}", ex.getMessage());
-            return Collections.singletonList("Cannot log param as aspect. ParamsFuture are filed. Ex: " + ex.getMessage());
+        } else { // TODO 14.08.2024 10:30 - проверить result.toString()
+            logFunction.accept(PARAMS, getSafety(paramsForLogFuture));
+            if (log.result()) {
+                logFunction.accept(RETURN, new String[]{result.toString()});
+            }
         }
     }
 
-    private BiConsumer<String, Object[]> logFunction(Logger logger, Level level) {
+    private String[] getSafety(CompletableFuture<List<Object>> runningFuture) {
+        try {
+            return runningFuture.get().stream().map(Object::toString).toArray(String[]::new);
+        } catch (InterruptedException | ExecutionException ex) {
+            log.error("Cannot log param as aspect. ParamsFuture are filed. Ex: {}", ex.getMessage());
+            return new String[]{"Cannot log param as aspect. ParamsFuture are filed. Ex: " + ex.getMessage()};
+        }
+    }
+
+    private BiConsumer<String, String[]> logFunction(Logger logger, Level level) {
         return switch (level) {
             case TRACE -> logger::trace;
             case DEBUG -> logger::debug;
