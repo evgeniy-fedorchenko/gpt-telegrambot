@@ -2,25 +2,24 @@ package com.evgeniyfedorchenko.gptbot.yandex.model;
 
 import lombok.Builder;
 import lombok.Getter;
+import lombok.ToString;
 import org.springframework.http.MediaType;
 
+import java.io.Serializable;
 import java.util.List;
 import java.util.Random;
-
-import static com.evgeniyfedorchenko.gptbot.yandex.model.ArtRequestBody.AspectRatio.DEFAULT_HEIGHT_RATIO;
-import static com.evgeniyfedorchenko.gptbot.yandex.model.ArtRequestBody.AspectRatio.DEFAULT_WIDTH_RATIO;
-
 
 /**
  * Класс представляет собой тело запроса, который направляется на обработку модели {@code YandexART}
  */
 @Getter
 @Builder
-public class ArtRequestBody {
+@ToString
+public class ArtRequestBody implements Serializable {
 
     /**
      * Внутренний идентификатор модели {@code YandexART}, содержащий идентификатор каталога Yandex Cloud.
-     * Параметр {@code <your-yandex-folder-id>} - это идентификатор каталога Yandex Cloud
+     * Параметр {@code a2gmcltgwefld9t36qwe} - это идентификатор каталога Yandex Cloud
      *
      * @example {@code "gpt://a2gmcltgwefld9t36qwe/yandex-art/latest}
      */
@@ -44,7 +43,8 @@ public class ArtRequestBody {
      */
     @Getter
     @Builder
-    public static class GenerationOptions {
+    @ToString
+    public static class GenerationOptions implements Serializable {
 
         /**
          * Тип графического контента выходного изображения.
@@ -60,37 +60,21 @@ public class ArtRequestBody {
         @Builder.Default
         private final long seed = new Random().nextLong(0, Long.MAX_VALUE);
 
-        /**
-         *  Соотношение сторон генерируемого изображения (опционально), ширина и высота
-         */
+        /** Соотношение сторон генерируемого изображения (опционально), ширина и высота */
         @Builder.Default
-        private final AspectRatio aspectRatio = new AspectRatio(DEFAULT_WIDTH_RATIO, DEFAULT_HEIGHT_RATIO);
+        private final AspectRatio aspectRatio = AspectRatio.builder().build();
     }
 
-    public record AspectRatio(long widthRatio, long heightRatio) {
-        static final long DEFAULT_WIDTH_RATIO = 1L;
-        static final long DEFAULT_HEIGHT_RATIO = 1L;
+    @Getter
+    @Builder
+    @ToString
+    public static class AspectRatio {
+
+        @Builder.Default
+        private final long widthRatio = 1L;
+
+        @Builder.Default
+        private final long heightRatio = 1L;
+
     }
 }
-
-/*
-
-{
-    "modelUri": "art://a2gmcltgwefld9t36qwe/yandex-art/latest",
-    "generationOptions": {
-        "mimeType": "image/jpeg",
-        "seed": "1863",
-        "aspectRatio": {
-            "widthRatio": "2",
-            "heightRatio": "1"
-        }
-    },
-    "messages": [
-        {
-            "weight": "1",
-            "text": "узор из цветных пастельных суккулентов разных сортов, hd full wallpaper, четкий фокус, множество сложных деталей, глубина кадра, вид сверху"
-        }
-    ]
-}
-
-*/

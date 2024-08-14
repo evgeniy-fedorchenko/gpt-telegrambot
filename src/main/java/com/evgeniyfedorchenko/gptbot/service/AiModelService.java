@@ -20,7 +20,7 @@ import java.util.Optional;
  * @param <REQ>  класс тела запроса, посылаемого к модели на генерацию контента
  * @param <RESP> класс, представляющий ответ нейросети в том виде, в котором она его отдает
  */
-public interface AiModelService<REQ, RESP> {
+public interface AiModelService<REQ extends Serializable, RESP> {
 
     /**
      * Метод для подготовки объекта, который будет десериализован и помещен в тело http-запроса. Этот запрос
@@ -50,7 +50,7 @@ public interface AiModelService<REQ, RESP> {
      * @throws IOException             не удалось выполнить http-запрос, например из-за отмены,
      *                                 проблемы с подключением или тайм-аута
      */
-    Optional<RESP> buildAndExecutePost(String url, Object requestBody, Class<RESP> responseType) throws IOException;
+    Optional<RESP> buildAndExecutePost(String url, Serializable requestBody, Class<RESP> responseType) throws IOException;
 
     /**
      * Метод для постобработки ответов нейросети, кеширования, сбор статистики, и подготовка объектов, пригодных
@@ -78,7 +78,7 @@ public interface AiModelService<REQ, RESP> {
      * должен быть десериализован объект, полученный в теле http-ответа от целевой нейросети
      *
      * @return объект класса, в экземпляр которого должен быть десериазизован ответ полученный путем http-запроса,
-     * совершенного в {@link AiModelService#buildAndExecutePost(String, Object, Class)}
+     * совершенного в {@link AiModelService#buildAndExecutePost(String, Serializable, Class)}
      */
     Class<RESP> getResponseType();
 

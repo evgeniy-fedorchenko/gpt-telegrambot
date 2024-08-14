@@ -38,7 +38,8 @@ public class TelegramService {
     private final TelegramExecutor telegramExecutor;
 
     @Log
-    public <REQ, RESP> PartialBotApiMethod<? extends Serializable> processing(Update update, Mode currentMode) {
+    public <REQ extends Serializable, RESP> PartialBotApiMethod<? extends Serializable> processing(
+            Update update, Mode currentMode) {
 
         try {
 
@@ -75,7 +76,7 @@ public class TelegramService {
     }
 
     @SuppressWarnings("unchecked")   // safety cast in try-catch block. Return null, if impossible to cast
-    private <REQ, RESP> @Nullable AiModelService<REQ, RESP> getAiModelService(Mode mode) {
+    private <REQ extends Serializable, RESP> @Nullable AiModelService<REQ, RESP> getAiModelService(Mode mode) {
 
         String serviceName = mode.getServiceName();
         if (serviceName == null) {

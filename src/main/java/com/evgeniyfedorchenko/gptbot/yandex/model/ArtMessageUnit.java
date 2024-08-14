@@ -2,6 +2,9 @@ package com.evgeniyfedorchenko.gptbot.yandex.model;
 
 import lombok.Builder;
 import lombok.Getter;
+import lombok.ToString;
+
+import java.io.Serializable;
 
 /**
  * Класс представляет один объект сообщения, отправляемого модели {@code YandexART} для генерации.
@@ -10,7 +13,8 @@ import lombok.Getter;
  */
 @Getter
 @Builder
-public class ArtMessageUnit {
+@ToString
+public class ArtMessageUnit implements Serializable {
 
     /**
      * Вес текстового описания. Если в запросе присутствует больше одного описания, влияние каждого

@@ -1,16 +1,18 @@
 package com.evgeniyfedorchenko.gptbot.yandex.model;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.ToString;
+
+import java.io.Serializable;
 
 /**
  * История сообщений. Тот контекст, который должна "помнить" модель. Нужно передавать его в каждом запросе
  */
 @Getter
+@ToString
 @AllArgsConstructor
-@JsonInclude(JsonInclude.Include.NON_NULL)
-public class GptMessageUnit {
+public class GptMessageUnit implements Serializable {
 
     /** Роль отправителя данного сообщения. Чтоб модель понимала, что отвечала она, а что юзер */
     private final String role;
@@ -49,6 +51,10 @@ public class GptMessageUnit {
 
         private final String role;
 
+        @Override
+        public String toString() {
+            return this.name();
+        }
     }
 
 }

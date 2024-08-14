@@ -57,7 +57,7 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
     }
 
     @Override
-    public Optional<GptAnswer> buildAndExecutePost(String url, Object requestBody, Class<GptAnswer> responseType)
+    public Optional<GptAnswer> buildAndExecutePost(String url, Serializable requestBody, Class<GptAnswer> responseType)
             throws IOException {
 
         String serializedBody = objectMapper.writeValueAsString(requestBody);
@@ -80,7 +80,7 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
     @Override
     public PartialBotApiMethod<? extends Serializable> responseProcess(GptAnswer response, Message sourceMess) {
         String chatId = String.valueOf(sourceMess.getChatId());
-        GptMessageUnit answer = response.result().alternatives().getLast().message();
+        GptMessageUnit answer = response.getResult().getAlternatives().getLast().getMessage();
 
         CompletableFuture.runAsync(
                 () -> historyCache.addMessage(chatId, answer),

@@ -52,7 +52,7 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
      * Нестандартным считается ответ, когда нейросеть отказалась генерировать изображение по промпту по
      * различным причинам, например из-за аморального содержания промпта или нарушения её политики использования.
      * Такие ответы приходят со статусом {@link HttpStatus#BAD_REQUEST} и непустым полем
-     * {@link ArtAnswer#getErrorString()}. Эта карта соотносит ответы сети из {@link ArtAnswer#getErrorString()}
+     * {@link ArtAnswer#getErrorDisc()}. Эта карта соотносит ответы сети из {@link ArtAnswer#getErrorDisc()}
      * и текстом которым ответит этот бот на такой запрос
      * <lu>
      * <li><b>key</b> - текст ответа нейронки, в случае отказа генерировать изображение</li>
@@ -109,7 +109,7 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
     }
 
     @Override
-    public Optional<ArtAnswer> buildAndExecutePost(String url, Object requestBody, Class<ArtAnswer> responseType)
+    public Optional<ArtAnswer> buildAndExecutePost(String url, Serializable requestBody, Class<ArtAnswer> responseType)
             throws IOException {
 
         String serializedBody = objectMapper.writeValueAsString(requestBody);
@@ -216,7 +216,7 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
         log.error("Filed generate image. Prompt: {}. user: {}", sourceMess.getText(), sourceMess.getChatId());
         return new SendMessage(
                 String.valueOf(sourceMess.getChatId()),
-                FILED_ANSWER_MAP.getOrDefault(completedAnswer.getErrorString(), DEFAULT_FILED_ANSWER_MAP_VALUE)
+                FILED_ANSWER_MAP.getOrDefault(completedAnswer.getErrorDisc(), DEFAULT_FILED_ANSWER_MAP_VALUE)
         );
     }
 
@@ -225,7 +225,7 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
         try (PipedOutputStream pipedOut = new PipedOutputStream();
              PipedInputStream pipedIn = new PipedInputStream(pipedOut)) {
 
-            pipedOut.write(Base64.getDecoder().decode(answer.getResponse().image()));
+            pipedOut.write(Base64.getDecoder().decode(answer.getResponse().getImage()));
             return new SendPhoto(chatId, new InputFile(pipedIn, "result"));
         } catch (IOException e) {
             throw new RuntimeException(e);

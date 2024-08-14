@@ -4,22 +4,26 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotNull;
-import lombok.Builder;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.ToString;
+
+import java.io.Serializable;
 
 /**
  * Класс, представляющий ответ модели {@code YandexART}, который она предоставляет СРАЗУ после получения запроса,
  * то есть в нем не содержится сгенерированное изображение. Так как модель генерирует изображение только асинхронно,
- * суть этого класса - вернуть идентификатор (поле {@code id}), по которому юзер сможет опрашивать модель на
+ * суть этого класса - вернуть идентификатор (поле {@code id}), по которому клиент сможет опрашивать модель на
  * готовность своего изображения<br>
- * По окончании операции (т.е. когда {@code this.isDone == true}), результат включает только одно
- * из полей {@link Error} или {@link ArtCompleteResponse}
+ * По окончании операции (т.е. когда {@code this.isDone == true}), результат включает либо поле с контентом
+ * {@link ArtCompleteResponse} либо поля с ошибками {@link ArtAnswer#errorCode}/{@link ArtAnswer#errorDisc}
  */
 
 @Getter
-@Builder
+@ToString
+@AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class ArtAnswer {
+public class ArtAnswer implements Serializable {
 
     /** Идентификатор запущенного процесса по генерации изображения */
     @NotNull
@@ -48,72 +52,43 @@ public class ArtAnswer {
     @Nullable
     private final String metadata;
 
-    // TODO 10.08.2024 23:15: поправить структуру объекта (часть с Error    )
-    /** Обычная ошибка, например "кончился лимит токенов". Присутствует только в случае провала */
-//    @Nullable
-//    private final Error error;
-
-    /** Грубая ошибка, например нарушение политики использования. Возвращается с {@code HttpStatus = 4хх/5хх} */
-    @Nullable
-    @JsonProperty("error")
-    private final String errorString;
-
     /**
      * Код грубой ошибки. Возвращается с {@code HttpStatus = 4хх/5хх}<br>
      * Значение перечисления <a href="https://github.com/googleapis/googleapis/blob/master/google/rpc/code.proto">google.rpc.Code</a>
      */
     @Nullable
-    private final Integer code;
+    @JsonProperty("code")
+    private final Integer errorCode;
+
+    /**
+     * Грубая ошибка, например нарушение политики использования. Возвращается с {@code HttpStatus = 4хх/5хх}
+     * Краткое пояснение к ошибке, подробнее см. <a href="https://github.com/googleapis/googleapis/blob/master/google/rpc/code.proto">google.rpc.Code</a>
+     */
+    @Nullable
+    @JsonProperty("error")
+    private final String errorDisc;
 
     /** Нормальный ответ от модели в случае успеха генерации. Содержит готовое изображение */
     @Nullable
     private final ArtCompleteResponse response;
 
     public boolean hasErrors() {
-        return errorString != null;
+        return errorCode != null && errorDisc != null;
     }
-
-
-    /**
-     * Объект ошибки, содержащий сведения, поясняющие, что именно пошло не так.
-     * При наличии поля этого класса в объекте {@link ArtAnswer} поле {@link ArtAnswer#response}
-     * недоступно (равно {@code null})
-     *
-     * @param code    Код ошибки. Значение перечисления <a href="https://github.com/googleapis/googleapis/blob/master/google/rpc/code.proto">google.rpc.Code</a>
-     * @param message Краткое пояснение к ошибке, подробнее см. <a href="https://github.com/googleapis/googleapis/blob/master/google/rpc/code.proto">google.rpc.Code</a>
-     * @param details Список сообщений, содержащих сведения об ошибке
-     */
-//    public record Error(int code, @NotBlank String message, @NotNull List<String> details) {
-//    }
 
     /**
      * Объект с результатом успешного процесса генерации, содержащий результат, закодированный в {@code Base64}
-     *
-     * @param image        Сам результат операции - изображение в кодировке {@code Base64}
-     * @param modelVersion Номер модели, сгенерировавшей это изображение. todo проверить
      */
-    public record ArtCompleteResponse(String image, String modelVersion) { // TODO 10.08.2024 23:29: переделать в класс, чтоб не было нал-алармов
+    @Getter
+    @ToString
+    @AllArgsConstructor
+    public static class ArtCompleteResponse {
+
+        /** Сам результат операции - изображение в кодировке {@code Base64} */
+        private final String image;
+
+        /** Номер модели, сгенерировавшей это изображение */
+        private final String modelVersion;
+
     }
 }
-
-/*
-
-todo вставить пример
-{
-    "id": "fbviqsidaptcb1adl44i",
-    "description": "string",
-    "createdAt": "2024-08-03T19:34:12.759471248Z",
-    "createdBy": "string",
-    "modifiedAt": "string",
-    "done": true,
-    "metadata": "object",
-    "error": {
-        "code": "integer",
-        "message": "string",
-        "details": [
-            "object"
-        ]
-    },
-    "response": "object",
-
-*/
