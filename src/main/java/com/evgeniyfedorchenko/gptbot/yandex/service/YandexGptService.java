@@ -32,12 +32,21 @@ import static com.evgeniyfedorchenko.gptbot.configuration.OkHttpClientConfigurat
 public class YandexGptService implements AiModelService<GptRequestBody, GptAnswer> {
 
     public static final String SERVICE_NAME = "YandexGptService";
+    private static final int MAX_COUNT_SYMBOLS = 3700;
+    private static final String TOO_LONG_MESS_ANSWER = "Слишком длинное сообщение, постарайся немного сократить и уместиться в %s символов";
 
     private final OkHttpClient httpClient;
     private final ObjectMapper objectMapper;
     private final HistoryRedisService historyCache;
     private final YandexProperties yandexProperties;
     private final ExecutorService executorServiceOfVirtual;
+
+    @Override
+    public Optional<String> validate(Message inputMess) {
+        return inputMess.getText().length() > MAX_COUNT_SYMBOLS
+                ? Optional.of(TOO_LONG_MESS_ANSWER.formatted(MAX_COUNT_SYMBOLS))
+                : Optional.empty();
+    }
 
     @Override
     public GptRequestBody prepareRequest(Message inputMess) {

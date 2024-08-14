@@ -71,6 +71,8 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
      * {@link YandexArtService#FILED_ANSWER_MAP}
      */
     private static final String DEFAULT_FILED_ANSWER_MAP_VALUE = "Прости, но нейросеть отказалась генерировать изображение по такому промпту, попробуй как-нибудь изменить его";
+    private static final int MAX_COUNT_SYMBOLS = 500;
+    private static final String TOO_LONG_MESS_ANSWER = "Слишком подробный промпт, постарайся немного сократить и уместиться в %s символов";
 
     /**
      * Счетчик процентов. Показывает прогресс генерации изображения. На самом деле не имеет связи с процессом
@@ -98,6 +100,13 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
     private final TelegramExecutor telegramExecutor;
     private final ExecutorService executorServiceOfVirtual;
     private final UserModeRedisService userModeCache;
+
+    @Override
+    public Optional<String> validate(Message inputMess) {
+        return inputMess.getText().length() > MAX_COUNT_SYMBOLS
+                ? Optional.of(TOO_LONG_MESS_ANSWER.formatted(MAX_COUNT_SYMBOLS))
+                : Optional.empty();
+    }
 
     @Override
     public ArtRequestBody prepareRequest(Message inputMess) {

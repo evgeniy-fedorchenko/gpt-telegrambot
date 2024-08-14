@@ -22,6 +22,8 @@ import java.util.Optional;
  */
 public interface AiModelService<REQ, RESP> {
 
+    Optional<String> validate(Message inputMess);
+
     /**
      * Метод для подготовки объекта, который будет десериализован и помещен в тело http-запроса. Этот запрос
      * будет отправлен в нейросеть для генерации контента. Так же в этом методе будут выполнены все специфичные
