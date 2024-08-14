@@ -10,12 +10,15 @@ import org.aspectj.lang.reflect.MethodSignature;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.function.BiConsumer;
 import java.util.stream.IntStream;
@@ -27,6 +30,10 @@ import java.util.stream.IntStream;
 public class MethodLogAspect {
 
     private final ExecutorService executorServiceOfVirtual;
+
+    private static final String PARAMS = "-> [{}]";
+    private static final String RETURN = "<- [{}]";
+    private static final String EX = "!- [{}]";
 
     @Around("@annotation(log)")
     public Object logMethod(ProceedingJoinPoint joinPoint, Log log) throws Throwable {
@@ -64,28 +71,40 @@ public class MethodLogAspect {
         return result;
     }
 
-    private void doLog(CompletableFuture<List<Object>> paramsForLogFuture,
-                       BiConsumer<String, Object[]> logFunction,
-                       @Nullable Throwable exThrownInMethod,
-                       @Nullable Object result) {
+    @Async("executorServiceOfVirtual")
+    protected void doLog(CompletableFuture<List<Object>> paramsForLogFuture,
+                         BiConsumer<String, Object[]> logFunction,
+                         @Nullable Throwable exThrownInMethod,
+                         @Nullable Object result) {
 
-        if (exThrownInMethod != null) {
-            logFunction.accept("PARAMS: [{}] | THROWN: [{}]", new Object[]{paramsForLogFuture.join(), exThrownInMethod});
-            return;
+            if (exThrownInMethod != null) {
+                logFunction.accept(PARAMS, new Object[]{getSafety(paramsForLogFuture)});
+                logFunction.accept(EX, new Object[]{exThrownInMethod});
+                return;
+            }
+            if (result instanceof CompletableFuture<?> resultFuture) {
+                resultFuture.whenComplete((resF, exF) -> {
+                    if (exF != null) {
+                        logFunction.accept(PARAMS, new Object[]{getSafety(paramsForLogFuture)});
+                        logFunction.accept(EX, new Object[]{exF});
+                    } else {
+                        logFunction.accept(PARAMS, new Object[]{getSafety(paramsForLogFuture)});
+                        logFunction.accept(RETURN, new Object[]{resF});
+                    }
+                });
+                return;
+            }
+            logFunction.accept(PARAMS, new Object[]{getSafety(paramsForLogFuture)});
+            logFunction.accept(RETURN, new Object[]{result});
+    }
+
+    private List<Object> getSafety(CompletableFuture<List<Object>> runningFuture) {
+        try {
+            return runningFuture.get();
+        } catch (InterruptedException | ExecutionException ex) {
+            log.error("Cannot log param as aspect. ParamsFuture are filed. Ex: {}", ex.getMessage());
+            return Collections.singletonList("Cannot log param as aspect. ParamsFuture are filed. Ex: " + ex.getMessage());
         }
-        if (result instanceof CompletableFuture<?> futureResult) {
-            futureResult.handleAsync((res, resBrokenInMethod) -> {
-
-                if (resBrokenInMethod != null) {
-                    logFunction.accept("PARAMS: [{}] | THROWN: [{}]", new Object[]{paramsForLogFuture.join(), resBrokenInMethod});
-                } else {
-                    logFunction.accept("PARAMS: [{}] | RESULT: [{}]", new Object[]{paramsForLogFuture.join(), res});
-                }
-                return null;
-            }, executorServiceOfVirtual);
-
-        }
-        logFunction.accept("PARAMS: [{}] | RESULT: [{}]", new Object[]{paramsForLogFuture.join(), result});
     }
 
     private BiConsumer<String, Object[]> logFunction(Logger logger, Level level) {
