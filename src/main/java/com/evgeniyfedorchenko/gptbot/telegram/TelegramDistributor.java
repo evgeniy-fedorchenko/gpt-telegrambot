@@ -63,6 +63,7 @@ public class TelegramDistributor {
         );
     }
 
+    @Log
     public PartialBotApiMethod<? extends Serializable> distribute(Update update) {
 
         Message inMess = update.getMessage();

@@ -1,7 +1,6 @@
 package com.evgeniyfedorchenko.gptbot.telegram;
 
 import com.evgeniyfedorchenko.gptbot.configuration.properties.TelegramProperties;
-import com.evgeniyfedorchenko.gptbot.data.UserModeRedisService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
@@ -19,20 +18,17 @@ public class TelegramBot extends TelegramLongPollingBot {
     private final TelegramExecutor telegramExecutor;
     private final ExecutorService executorServiceOfVirtual;
     private final TelegramDistributor telegramDistributor;
-    private final UserModeRedisService userModeCache;
     private final TelegramProperties telegramProperties;
     public static final ThreadLocal<User> localUser = new ThreadLocal<>();
 
     public TelegramBot(TelegramExecutor telegramExecutor,
                        ExecutorService executorServiceOfVirtual,
                        TelegramDistributor telegramDistributor,
-                       UserModeRedisService userModeCache,
                        TelegramProperties telegramProperties) {
         super(telegramProperties.getToken());
         this.telegramExecutor = telegramExecutor;
         this.executorServiceOfVirtual = executorServiceOfVirtual;
         this.telegramDistributor = telegramDistributor;
-        this.userModeCache = userModeCache;
         this.telegramProperties = telegramProperties;
     }
 
@@ -68,10 +64,7 @@ public class TelegramBot extends TelegramLongPollingBot {
                     })
 
                     .exceptionally(ex -> {
-                        if (userModeCache.getMode(update.getMessage().getChatId()).equals(Mode.YANDEX_ART_HOLDED)) {
-                            userModeCache.setMode(update.getMessage().getChatId(), Mode.YANDEX_ART);
-                        }
-                        log.error("Processing has FAILED for updateID {}. Ex: ", update.getUpdateId(), ex);
+                        log.error("Processing has FAILED (NOT HANDLED) for updateID {}. Ex: ", update.getUpdateId(), ex);
                         return null;
                     });
         }
