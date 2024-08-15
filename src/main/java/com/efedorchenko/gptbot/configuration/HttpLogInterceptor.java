@@ -42,7 +42,7 @@ public class HttpLogInterceptor implements Interceptor {
                             : utf8;
                 }
 
-                log.trace("\nRequest line: {}\nHeaders     : {}\nRequest body: {}",
+                log.trace("\n" + BLUE + "Request line" + RESET + " : {}\n" + BLUE + "Headers     " + RESET + " : {}\n" + BLUE + "Request body" + RESET + " : {}",
                         request.method() + " " + request.url(),
                         request.headers().toString().replaceAll("\n", ", "),
                         utf8);
@@ -69,7 +69,7 @@ public class HttpLogInterceptor implements Interceptor {
                     ? respBody.string().replaceAll("\n", "")
                     : "none";
 
-            log.trace("\nStatus       : {}\nHeaders      : {}\nTime spent   : {}\nResponse body: {}",
+            log.trace("\n" + BLUE + "Status       " + RESET + " : {}\n" + BLUE + "Headers      " + RESET + " : {}\n" + BLUE + "Time spent   " + RESET + " : {}\n" + BLUE + "Response body" + RESET + " : {}",
                     response.code() + " " + response.message(),
                     response.headers().toString().replaceAll("\n", ", "),
                     response.receivedResponseAtMillis() - response.sentRequestAtMillis() + " ms",
@@ -80,8 +80,15 @@ public class HttpLogInterceptor implements Interceptor {
         }
         return respBody != null && bodyStr != null
                 ? response.newBuilder()
-                    .body(ResponseBody.create(bodyStr.getBytes(), respBody.contentType()))
-                    .build()
+                .body(ResponseBody.create(bodyStr.getBytes(), respBody.contentType()))
+                .build()
                 : response;
     }
+
+    private static final String RESET = "\u001B[0m";
+    private static final String RED = "\u001B[31m";
+    private static final String GREEN = "\u001B[32m";
+    private static final String YELLOW = "\u001B[33m";
+    private static final String BLUE = "\u001B[34m";
+
 }
