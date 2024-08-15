@@ -1,5 +1,6 @@
 package com.efedorchenko.gptbot.yandex.service;
 
+import com.efedorchenko.gptbot.aop.Log;
 import com.efedorchenko.gptbot.configuration.OkHttpClientConfiguration;
 import com.efedorchenko.gptbot.configuration.properties.YandexProperties;
 import com.efedorchenko.gptbot.data.HistoryRedisService;
@@ -62,6 +63,7 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
                 .build();
     }
 
+    @Log
     @Override
     public Optional<GptAnswer> buildAndExecutePost(String url, Serializable requestBody, Class<GptAnswer> responseType)
             throws IOException {
@@ -93,6 +95,7 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
         }
     }
 
+    @Log
     @Override
     public PartialBotApiMethod<? extends Serializable> responseProcess(GptAnswer response, Message sourceMess) {
         String chatId = String.valueOf(sourceMess.getChatId());

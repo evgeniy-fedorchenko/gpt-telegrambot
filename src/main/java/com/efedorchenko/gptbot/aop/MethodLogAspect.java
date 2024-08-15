@@ -86,50 +86,61 @@ public class MethodLogAspect {
                          Logger logger,
                          Log log) {
 
-        BiConsumer<String, String[]> logFunction = logFunction(logger, log.level());
+        BiConsumer<String, String> logFunction = logFunction(logger, log.level());
 
         if (result instanceof Throwable throwable) {
             logFunction.accept(PARAMS, getSafety(paramsForLogFuture));
-            logFunction.accept(EX, new String[]{throwable.toString()});
+            logFunction.accept(EX, throwable.toString());
 
         } else if (result instanceof CompletableFuture<?> resultFuture) {
             resultFuture.whenComplete((resF, exF) -> {
+
                 if (exF != null) {
                     logFunction.accept(PARAMS, getSafety(paramsForLogFuture));
-                    logFunction.accept(EX, new String[]{exF.toString()});
+                    logFunction.accept(EX, exF.toString());
+
                 } else {
                     logFunction.accept(PARAMS, getSafety(paramsForLogFuture));
                     if (log.result()) {
-                        logFunction.accept(RETURN, new String[]{resF.toString()});
+                        logFunction.accept(RETURN, getSafety(resF));
                     }
                 }
             });
 
-        } else { // TODO 14.08.2024 10:30 - проверить result.toString()
+        } else {
             logFunction.accept(PARAMS, getSafety(paramsForLogFuture));
             if (log.result()) {
-                logFunction.accept(RETURN, new String[]{result.toString()});
+                logFunction.accept(RETURN, getSafety(result));
             }
         }
     }
 
-    private String[] getSafety(CompletableFuture<List<Object>> runningFuture) {
+    private String getSafety(Object resF) {
         try {
-            return runningFuture.get().stream().map(obj -> {
-                try {
-                    String s = objectMapper.writeValueAsString(obj);
-                    return s;
-                } catch (JsonProcessingException e) {
-                    throw new RuntimeException(e);
-                }
-            }).toArray(String[]::new);
-        } catch (InterruptedException | ExecutionException ex) {
+            return objectMapper.writeValueAsString(resF);
+        } catch (JsonProcessingException ex) {
             log.error("Cannot log param as aspect. ParamsFuture are filed. Ex: {}", ex.getMessage());
-            return new String[]{"Cannot log param as aspect. ParamsFuture are filed. Ex: " + ex.getMessage()};
+            return "Cannot log param as aspect. ParamsFuture are filed. Ex: " + ex.getMessage();
         }
     }
 
-    private BiConsumer<String, String[]> logFunction(Logger logger, Level level) {
+    private String getSafety(CompletableFuture<List<Object>> runningFuture) {
+        try {
+            List<Object> objects = runningFuture.get();
+            String[] strings = new String[objects.size()];
+
+            for (int i = 0; i < objects.size(); i++) {
+                strings[i] = objectMapper.writeValueAsString(objects.get(i));
+            }
+            return String.join(", ", strings);
+
+        } catch (InterruptedException | ExecutionException | JsonProcessingException ex) {
+            log.error("Cannot log param as aspect. ParamsFuture are filed. Ex: {}", ex.getMessage());
+            return "Cannot log param as aspect. ParamsFuture are filed. Ex: " + ex.getMessage();
+        }
+    }
+
+    private BiConsumer<String, String> logFunction(Logger logger, Level level) {
         return switch (level) {
             case TRACE -> logger::trace;
             case DEBUG -> logger::debug;

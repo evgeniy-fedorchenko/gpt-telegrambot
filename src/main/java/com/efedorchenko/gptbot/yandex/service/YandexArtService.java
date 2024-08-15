@@ -1,5 +1,6 @@
 package com.efedorchenko.gptbot.yandex.service;
 
+import com.efedorchenko.gptbot.aop.Log;
 import com.efedorchenko.gptbot.configuration.OkHttpClientConfiguration;
 import com.efedorchenko.gptbot.configuration.properties.YandexProperties;
 import com.efedorchenko.gptbot.data.UserModeRedisService;
@@ -119,6 +120,7 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
                 .build();
     }
 
+    @Log
     @Override
     public Optional<ArtAnswer> buildAndExecutePost(String url, Serializable requestBody, Class<ArtAnswer> responseType)
             throws IOException {
@@ -139,6 +141,7 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
         }
     }
 
+    @Log(result = false)
     @Override
     public PartialBotApiMethod<? extends Serializable> responseProcess(ArtAnswer firstResponse, Message sourceMess) {
 

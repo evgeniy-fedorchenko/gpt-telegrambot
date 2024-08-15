@@ -47,13 +47,12 @@ public class TelegramService {
     private final UserModeRedisService userModeCache;
     private final TelegramExecutor telegramExecutor;
 
-    @Log
+    @Log(result = false)   // result логируется методом, стоящим выше по стеку
     public <REQ extends Serializable, RESP> PartialBotApiMethod<? extends Serializable> processing(
-            Update update, Mode currentMode) {
+            Mode currentMode, Update update) {
 
         Message inMess = update.getMessage();
         String chatId = String.valueOf(inMess.getChatId());
-
         Future<?> future = scheduleChatAction(chatId, currentMode);
         TelegramBot.localUser.set(inMess.getFrom());
 
@@ -83,21 +82,6 @@ public class TelegramService {
             }
         }
     }
-
-//    @SuppressWarnings("unchecked")   // safety cast in try-catch block. Return null, if impossible to cast
-//    private <REQ extends Serializable, RESP> @Nullable AiModelService<REQ, RESP> getAiModelService(Mode mode) {
-//
-//        String serviceName = mode.getServiceName();
-//        if (serviceName == null) {
-//            return null;
-//        }
-//        Object bean = applicationContext.getBean(serviceName);
-//        if (bean instanceof AiModelService<?, ?> aiModelService) {
-//            try {
-//                return (AiModelService<REQ, RESP>) aiModelService;
-//            } catch (ClassCastException ignored) {
-//            }
-//        }
 
     @SuppressWarnings("unchecked")
     private <REQ extends Serializable, RESP> AiModelService<REQ, RESP> getAiModelService(Mode mode) {

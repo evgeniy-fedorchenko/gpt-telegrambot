@@ -82,7 +82,7 @@ public class TelegramDistributor {
         }
 
 //        Main processing
-        return telegramService.processing(update, currentMode);
+        return telegramService.processing(currentMode, update);
     }
 
     @Getter
