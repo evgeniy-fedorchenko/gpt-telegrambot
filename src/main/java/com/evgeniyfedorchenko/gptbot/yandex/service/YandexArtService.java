@@ -121,7 +121,7 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
     }
 
     @Override
-    public Optional<ArtAnswer> buildAndExecutePost(String url, Object requestBody, Class<ArtAnswer> responseType)
+    public Optional<ArtAnswer> buildAndExecutePost(String url, Serializable requestBody, Class<ArtAnswer> responseType)
             throws IOException {
 
         String serializedBody = objectMapper.writeValueAsString(requestBody);
