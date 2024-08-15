@@ -10,7 +10,7 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 
-	<groupId>com.evgeniyfedorchenko</groupId>
+	<groupId>com.efedorchenko</groupId>
 	<artifactId>gpt-telegrambot</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>gpt-telegrambot</name>
