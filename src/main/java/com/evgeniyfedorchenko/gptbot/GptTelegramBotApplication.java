@@ -27,4 +27,5 @@ public class GptTelegramBotApplication {
 	// TODO 13.08.2024 22:34: сделать StatsController (получить статистику из бд) и SendContentController (отправить сообщение юзерам)
 	// TODO 13.08.2024 23:47: логирование без null-полей в апдейтах
 	// TODO 14.08.2024 10:48 - собрать прилагу в докере
+	// TODO 14.08.2024 23:22: ввести маркеры в логирование исключений в MethodLogAspect
 }

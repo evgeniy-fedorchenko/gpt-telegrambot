@@ -20,6 +20,7 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.PartialBotApiMethod;
@@ -61,16 +62,18 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
      * <li><b>value</b>- ответ, который этот бот отправил юзеру</li>
      * </lu>
      */
-    private static final Map<String, String> FILED_ANSWER_MAP = Map.of(
+    private static final Map<String, String> FILED_MODEL_ANSWER_MAP = Map.of(
             "it is not possible to generate an image from this request because it may violate the terms of use", "Упс! Такое генерировать не буду!"
     );
 
     /**
      * Дефолтный ответ бота, в случае, если нейросеть отказалась генерировать изображение по заданному промпту по
      * неизвестной причине. Известные причины (и соотносящиеся с ними ответы бота) определены в карте
-     * {@link YandexArtService#FILED_ANSWER_MAP}
+     * {@link YandexArtService#FILED_MODEL_ANSWER_MAP}
      */
-    private static final String DEFAULT_FILED_ANSWER_MAP_VALUE = "Прости, но нейросеть отказалась генерировать изображение по такому промпту, попробуй как-нибудь изменить его";
+    private static final String DEFAULT_FILED_MODEL_ANSWER_MAP_VALUE = "Прости, но нейросеть отказалась генерировать изображение по такому промпту, попробуй как-нибудь изменить его";
+    private static final int MAX_COUNT_SYMBOLS = 500;
+    private static final String TOO_LONG_MESS_ANSWER = "Слишком подробный промпт, постарайся немного сократить и уместиться в %s символов";
 
     /**
      * Счетчик процентов. Показывает прогресс генерации изображения. На самом деле не имеет связи с процессом
@@ -100,6 +103,13 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
     private final UserModeRedisService userModeCache;
 
     @Override
+    public Optional<String> validate(Message inputMess) {
+        return inputMess.getText().length() > MAX_COUNT_SYMBOLS
+                ? Optional.of(TOO_LONG_MESS_ANSWER.formatted(MAX_COUNT_SYMBOLS))
+                : Optional.empty();
+    }
+
+    @Override
     public ArtRequestBody prepareRequest(Message inputMess) {
 
         userModeCache.setMode(inputMess.getChatId(), Mode.YANDEX_ART_HOLDED);
@@ -111,14 +121,14 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
     }
 
     @Override
-    public Optional<ArtAnswer> buildAndExecutePost(String url, Serializable requestBody, Class<ArtAnswer> responseType)
+    public Optional<ArtAnswer> buildAndExecutePost(String url, Object requestBody, Class<ArtAnswer> responseType)
             throws IOException {
 
         String serializedBody = objectMapper.writeValueAsString(requestBody);
 
         Request request = new Request.Builder()
                 .url(url)
-                .header(HttpHeaders.CONTENT_TYPE, org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + IamTokenSupplier.IAM_TOKEN)
                 .post(RequestBody.create(serializedBody, MT_APPLICATION_JSON))
                 .build();
@@ -147,9 +157,13 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
             return new SendMessage(chatId, "Бля! Что-то пошло не так, давай по новой");  // todo Кажется, это  проблемы с самой нейронкой
         }
 
-        ArtAnswer secondResponse = retryTemplate.execute(context ->
-                this.processRetryInvoke(this.retryInvoke(firstResponse.getId()), chatId)
-                        .orElseThrow(() -> new RetryAttemptNotReadyException("The picture is not ready yet"))
+        ArtAnswer secondResponse = retryTemplate.execute(context -> {
+                    if (context.getRetryCount() == 120) { // TODO 15.08.2024 01:09: проверить
+                        percentReady = 1;
+                    }
+                    return this.processRetryInvoke(this.retryInvoke(firstResponse.getId()), chatId)
+                            .orElseThrow(() -> new RetryAttemptNotReadyException("The picture is not ready yet"));
+                }
         );
 
         return secondResponse.hasErrors()
@@ -201,12 +215,14 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
 
         } else {
             CompletableFuture.runAsync(() -> {
-                percentReady = calculatePercentReady(percentReady);
-                EditMessageText mess = new EditMessageText("Генерация завершена на %.2f%%".formatted(percentReady));
-                mess.setChatId(chatId);
-                mess.setMessageId(generationProcessMess.getMessageId());
-
-                telegramExecutor.send(mess);
+                Double newPercentReady = calculatePercentReady(percentReady);
+                if (!newPercentReady.equals(percentReady)) {
+                    percentReady = newPercentReady;
+                    EditMessageText mess = new EditMessageText("Генерация завершена на %.2f%%".formatted(percentReady));
+                    mess.setChatId(chatId);
+                    mess.setMessageId(generationProcessMess.getMessageId());
+                    telegramExecutor.send(mess);
+                }
 
             }, executorServiceOfVirtual);
 
@@ -218,7 +234,7 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
         log.error("Filed generate image. Prompt: {}. user: {}", sourceMess.getText(), sourceMess.getChatId());
         return new SendMessage(
                 String.valueOf(sourceMess.getChatId()),
-                FILED_ANSWER_MAP.getOrDefault(completedAnswer.getErrorDisc(), DEFAULT_FILED_ANSWER_MAP_VALUE)
+                FILED_MODEL_ANSWER_MAP.getOrDefault(completedAnswer.getErrorDisc(), DEFAULT_FILED_MODEL_ANSWER_MAP_VALUE)
         );
     }
 

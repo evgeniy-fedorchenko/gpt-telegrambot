@@ -1,5 +1,6 @@
 package com.evgeniyfedorchenko.gptbot.telegram;
 
+import com.evgeniyfedorchenko.gptbot.aop.Log;
 import com.evgeniyfedorchenko.gptbot.data.HistoryRedisService;
 import com.evgeniyfedorchenko.gptbot.data.UserModeRedisService;
 import com.evgeniyfedorchenko.gptbot.service.TelegramService;
@@ -63,13 +64,14 @@ public class TelegramDistributor {
         );
     }
 
+    @Log
     public PartialBotApiMethod<? extends Serializable> distribute(Update update) {
 
         Message inMess = update.getMessage();
         String chatId = String.valueOf(inMess.getChatId());
 
 //        Block if user wait for the image as YANDEX_ART mode
-        Mode currentMode = userModeCache.getMode(chatId); // Для аварийного сброса: userModeRedisService.setMode(chatId, Mode.YANDEX_ART)
+        Mode currentMode = userModeCache.getMode(chatId); // Для аварийного сброса: userModeCache.setMode(chatId, Mode.YANDEX_ART)
         if (currentMode.equals(Mode.YANDEX_ART_HOLDED)) {
             return new SendMessage(chatId, "Не торопись, подожди еще немного, окей?\nНадо завершить предыдущую генерацию");
         }
@@ -117,7 +119,7 @@ public class TelegramDistributor {
                 
                 Не стесняйся и обязательно напиши сюда: @AzorAhai777 или сюда: @alexsubbotinn
                 
-                Thank you bro!,
+                Thank you bro!
                 """),
         YA_GPT("/gpt", "Ок, начнем новый чат!"),
         YA_ART("/art", "Ок, скинь мне подробное описание и подожди чуть-чуть\nЯ отравлю изображение, как только оно будет готово");
