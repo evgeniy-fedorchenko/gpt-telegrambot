@@ -23,7 +23,6 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.*;
 
 @Slf4j
@@ -58,11 +57,7 @@ public class TelegramService {
 
         try {
             AiModelService<REQ, RESP> aiModelService = getAiModelService(currentMode);
-
-            Optional<String> errorOpt = aiModelService.validate(inMess);
-            if (errorOpt.isPresent()) {
-                return new SendMessage(chatId, errorOpt.get());
-            }
+            inMess.setText(aiModelService.validate(inMess));
 
             REQ request = aiModelService.prepareRequest(inMess);
             String currentUrl = aiModelService.getModelUrl();

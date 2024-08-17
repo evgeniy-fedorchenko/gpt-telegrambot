@@ -103,10 +103,11 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
     private final UserModeRedisService userModeCache;
 
     @Override
-    public Optional<String> validate(Message inputMess) {
-        return inputMess.getText().length() > MAX_COUNT_SYMBOLS
-                ? Optional.of(TOO_LONG_MESS_ANSWER.formatted(MAX_COUNT_SYMBOLS))
-                : Optional.empty();
+    public String validate(Message inputMess) {
+        String prompt = inputMess.getText();
+        return prompt.length() > MAX_COUNT_SYMBOLS
+                ? prompt.substring(prompt.length() - MAX_COUNT_SYMBOLS)
+                : prompt;
     }
 
     @Override
@@ -196,6 +197,7 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
                 return objectMapper.readValue(response.body().string(), ArtAnswer.class);
             }
 
+            // TODO 18.08.2024 01:07: не обрабатывать здесь, передать дальше
         } catch (JsonProcessingException ex) {
             throw new GptTelegramBotException("Request was successful, but it wasn't possible to deserialize the response into an object of the \"%s\" class. Ex:{}".formatted(ArtAnswer.class), ex);
 
@@ -245,16 +247,6 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
         InputFile result = new InputFile(new ByteArrayInputStream(bytes), "result");
 
         return new SendPhoto(chatId, result);
-
-//        try (PipedOutputStream pipedOut = new PipedOutputStream();
-//             PipedInputStream pipedIn = new PipedInputStream(pipedOut)) {
-//
-//            pipedOut.write(Base64.getDecoder().decode(answer.getResponse().image()));
-//            return new SendPhoto(chatId, new InputFile(pipedIn, "result"));
-//        } catch (IOException e) {
-//            throw new RuntimeException(e);
-//        }
-
     }
 
     private Double calculatePercentReady(double current) {

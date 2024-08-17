@@ -30,8 +30,6 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
 
     public static final String SERVICE_NAME = "YandexGptService";
     private static final int MAX_COUNT_SYMBOLS = 3700;
-    private static final String TOO_LONG_MESS_ANSWER = "Слишком длинное сообщение, постарайся немного сократить и уместиться в %s символов";
-    private final Object networkLock = new Object();
 
     private final OkHttpClient httpClient;
     private final ObjectMapper objectMapper;
@@ -39,11 +37,14 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
     private final YandexProperties yandexProperties;
     private final ExecutorService executorServiceOfVirtual;
 
+    private final Object networkLock = new Object();
+
     @Override
-    public Optional<String> validate(Message inputMess) {
-        return inputMess.getText().length() > MAX_COUNT_SYMBOLS
-                ? Optional.of(TOO_LONG_MESS_ANSWER.formatted(MAX_COUNT_SYMBOLS))
-                : Optional.empty();
+    public String validate(Message inputMess) {
+        String messText = inputMess.getText();
+        return messText.length() > MAX_COUNT_SYMBOLS
+                ? messText.substring(messText.length() - MAX_COUNT_SYMBOLS)
+                : messText;
     }
 
     @Override

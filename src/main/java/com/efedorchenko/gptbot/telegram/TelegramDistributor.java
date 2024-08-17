@@ -4,6 +4,7 @@ import com.efedorchenko.gptbot.aop.Log;
 import com.efedorchenko.gptbot.data.HistoryRedisService;
 import com.efedorchenko.gptbot.data.UserModeRedisService;
 import com.efedorchenko.gptbot.service.TelegramService;
+import jakarta.annotation.Nullable;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import org.springframework.stereotype.Component;
@@ -64,11 +65,29 @@ public class TelegramDistributor {
         );
     }
 
+    /**
+     * Метод принимает входящий {@code update} и распределяет его по обработчикам в зависимости от содержания
+     * Возвращается {@code null}, если в процессе обработки становится понятно, что на это действие
+     * не нужно ничего отвечать. (Например, если пришло уведомление о закрепленном сообщении)
+     *
+     * @param update объект, представляющий уведомление о каком-то действии в чате
+     * @return готовый объект для возврата юзеру или {@code null}, если не нужно ничего возвращать
+     */
     @Log
-    public PartialBotApiMethod<? extends Serializable> distribute(Update update) {
+    public @Nullable PartialBotApiMethod<? extends Serializable> distribute(Update update) {
 
         Message inMess = update.getMessage();
         String chatId = String.valueOf(inMess.getChatId());
+
+//        На закрепление сообщения ничего не отвечаем
+        if (inMess.getPinnedMessage() != null) {
+            return null;
+        }
+
+//        Если нет текста - даем ОС (подпись под фото не считается за текст)
+        if (!inMess.hasText()) {
+            return new SendMessage(String.valueOf(chatId), "Прости, но я понимаю только текст");
+        }
 
 //        Block if user wait for the image as YANDEX_ART mode
         Mode currentMode = userModeCache.getMode(chatId); // Для аварийного сброса: userModeCache.setMode(chatId, Mode.YANDEX_ART)
@@ -116,9 +135,9 @@ public class TelegramDistributor {
                 - Просто оставить отзыв
                 - Задать вопрос
                 - Рассказать о неисправности
-                
+                                
                 Не стесняйся и обязательно напиши сюда: @AzorAhai777 или сюда: @alexsubbotinn
-                
+                                
                 Thank you bro!
                 """),
         YA_GPT("/gpt", "Ок, начнем новый чат!"),
