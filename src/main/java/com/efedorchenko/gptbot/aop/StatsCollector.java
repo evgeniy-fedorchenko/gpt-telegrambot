@@ -44,7 +44,7 @@ public class StatsCollector {
                     BotUser newUser = new BotUser();
                     newUser.setChatId(currentUser.getId());
                     newUser.setUsername(currentUser.getUserName());
-                    newUser.setName(currentUser.getFirstName() + " " + currentUser.getLastName());
+                    newUser.setName(extractName(currentUser));
 
                     log.info("New user! :)     Details: {}", newUser);
                     return newUser;
@@ -71,6 +71,22 @@ public class StatsCollector {
         }
 
         return result;
+    }
+
+    private String extractName(User currentUser) {
+        String firstName = currentUser.getFirstName();
+        String lastName = currentUser.getLastName();
+
+        if (firstName.isBlank() && lastName.isBlank()) {
+            return "Unknown user";
+        }
+        if (firstName.isBlank()) {
+            return lastName;
+        }
+        if (lastName.isBlank()) {
+            return firstName;
+        }
+        return firstName + " " + lastName;
     }
 
 }

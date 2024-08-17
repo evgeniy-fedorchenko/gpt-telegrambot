@@ -1,5 +1,6 @@
 package com.efedorchenko.gptbot.configuration;
 
+import com.efedorchenko.gptbot.aop.MethodLogAspect;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.Interceptor;
 import okhttp3.Request;
@@ -7,6 +8,8 @@ import okhttp3.Response;
 import okhttp3.ResponseBody;
 import okio.Buffer;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -14,6 +17,9 @@ import java.io.IOException;
 @Slf4j
 @Component
 public class HttpLogInterceptor implements Interceptor {
+
+    @Value("${logging.max-mess-length}")
+    private int maxLength;
 
     /**
      * Метод для логирования http-запросов и получаемых ответов, включая их тела (если метод запроса POST)
@@ -31,21 +37,18 @@ public class HttpLogInterceptor implements Interceptor {
         if (log.isTraceEnabled()) {
             try {
 
-                String utf8 = "";
+                String preparedBody = "";
                 if (request.body() != null) {
                     Buffer buffer = new Buffer();
                     request.body().writeTo(buffer);
-
-                    utf8 = buffer.readUtf8().replaceAll("\n", "");
-                    utf8 = utf8.length() > 2000
-                            ? utf8.substring(utf8.length() - 2000)
-                            : utf8;
+                    preparedBody = prepareBodyForLogging(buffer.readUtf8());
                 }
+                String headers = request.headers().toString().replaceAll("\n", ", ");
 
-                log.trace("\n" + BLUE + "Request line" + RESET + " : {}\n" + BLUE + "Headers     " + RESET + " : {}\n" + BLUE + "Request body" + RESET + " : {}",
-                        request.method() + " " + request.url(),
-                        request.headers().toString().replaceAll("\n", ", "),
-                        utf8);
+                log.trace("\n{}Request line {}: {}\n{}Headers      {}: {}\n{}Request body {}: {}",
+                        BLUE, RESET, request.method() + " " + request.url(),
+                        BLUE, RESET, headers,
+                        BLUE, RESET, preparedBody);
 
             } catch (IllegalArgumentException ex) {
                 log.warn("Cannot intercept request. request.body() is not UTF-8 encoded. Ex: {}", ex.getMessage());
@@ -61,28 +64,42 @@ public class HttpLogInterceptor implements Interceptor {
         if (!log.isTraceEnabled()) {
             return response;
         }
-        ResponseBody respBody = response.body();
-        String bodyStr = null;
+
+        ResponseBody responseBody = response.body();
+        String bodyAsString = null;
         try {
+            if (responseBody != null) {
+                bodyAsString = responseBody.string();
+            }
+            String code = response.code() + " (" + (response.receivedResponseAtMillis() - response.sentRequestAtMillis()) + " ms)";
+            String headers = response.headers().toString().replaceAll("\n", ", ");
+            String preparedBody = prepareBodyForLogging(bodyAsString);
 
-            bodyStr = respBody != null
-                    ? respBody.string().replaceAll("\n", "")
-                    : "none";
-
-            log.trace("\n" + BLUE + "Status       " + RESET + " : {}\n" + BLUE + "Headers      " + RESET + " : {}\n" + BLUE + "Time spent   " + RESET + " : {}\n" + BLUE + "Response body" + RESET + " : {}",
-                    response.code() + " " + response.message(),
-                    response.headers().toString().replaceAll("\n", ", "),
-                    response.receivedResponseAtMillis() - response.sentRequestAtMillis() + " ms",
-                    bodyStr.length() > 2000 ? bodyStr.substring(bodyStr.length() - 2000) : bodyStr);
+            log.trace("\n{}Status        {}: {}\n{}Headers       {}: {}\n{}Response body {}: {}",
+                    BLUE, RESET, code,
+                    BLUE, RESET, headers,
+                    BLUE, RESET, preparedBody);
 
         } catch (IOException ex) {
             log.error("Cannot intercept response body. Maybe it's because of OutOfMemoryError. Ex: {}", ex.getMessage());
         }
-        return respBody != null && bodyStr != null
+
+        return responseBody != null && bodyAsString != null
                 ? response.newBuilder()
-                .body(ResponseBody.create(bodyStr.getBytes(), respBody.contentType()))
+                .body(ResponseBody.create(bodyAsString.getBytes(), responseBody.contentType()))
                 .build()
                 : response;
+    }
+
+    private @NotNull String prepareBodyForLogging(@Nullable String rawBody) {
+        if (rawBody == null) {
+            return "no body";
+        }
+        String temp = MethodLogAspect.excludeBase64(rawBody.replaceAll("\n", ""));
+        return temp.length() > maxLength
+                ? "..." + temp.substring(temp.length() - maxLength)
+                : temp;
+
     }
 
     private static final String RESET = "\u001B[0m";
