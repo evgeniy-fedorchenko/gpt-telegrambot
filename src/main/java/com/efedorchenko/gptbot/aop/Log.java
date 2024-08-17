@@ -32,6 +32,6 @@ public @interface Log {
     /**
      * Уровень логирования для параметров и результата
      */
-    Level level() default Level.TRACE;
+    Level level() default Level.DEBUG;
 
 }

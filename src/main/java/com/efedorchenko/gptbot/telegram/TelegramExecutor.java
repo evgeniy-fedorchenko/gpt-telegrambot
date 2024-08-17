@@ -65,15 +65,15 @@ public class TelegramExecutor extends DefaultAbsSender {
                     mess.enableMarkdownV2(false);
                     execute(mess);
 
-                    log.debug("Markdown disable. Ex:{}", firstEx.getMessage());
-                    return suc;
+                    log.warn("Markdown disable. Ex:{}", firstEx.getMessage());
+                    return true;
                 }
                 if (method instanceof EditMessageText edit) {
                     edit.enableMarkdown(false);
                     execute(edit);
 
-                    log.debug("Markdown disable. Ex: {}", firstEx.getMessage());
-                    return suc;
+                    log.warn("Markdown disable. Ex: {}", firstEx.getMessage());
+                    return true;
                 }
 
 //            epic fail
