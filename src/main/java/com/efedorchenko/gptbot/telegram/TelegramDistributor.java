@@ -84,14 +84,14 @@ public class TelegramDistributor {
             return null;
         }
 
-//        Если нет текста - даем ОС (подпись под фото не считается за текст)
-        if (!inMess.hasText()) {
-            return new SendMessage(String.valueOf(chatId), "Прости, но я понимаю только текст");
+//        Если нет текста и ГС - даем ОС (подпись под фото не считается за текст)
+        if (!inMess.hasText() && !inMess.hasVoice()) {
+            return new SendMessage(String.valueOf(chatId), "Прости, но я понимаю только текст или голос");
         }
 
 //        Block if user wait for the image as YANDEX_ART mode
         Mode currentMode = userModeCache.getMode(chatId); // Для аварийного сброса: userModeCache.setMode(chatId, Mode.YANDEX_ART)
-        if (currentMode.equals(Mode.YANDEX_ART_HOLDED)) {
+        if (currentMode.equals(Mode.YANDEX_ART_HOLD)) {
             return new SendMessage(chatId, "Не торопись, подожди еще немного, окей?\nНадо завершить предыдущую генерацию");
         }
 
@@ -110,7 +110,7 @@ public class TelegramDistributor {
 
         START("/start", "Привет, как жизнь? \uD83D\uDC4B\nИспользуй команды слева от поля ввода и вперед!\nРежим по умолчанию: *GPT*"),
         HELP("/help", """
-                *Нейрон GPT v. 0.0.1 SNAPSHOT*
+                *Нейрон GPT v. 0.0.2*
                                 
                 Привет! Это Telegram-бот центра ИИ [Нейрон](https://aiperm.ru/) 😎
                                 

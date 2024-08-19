@@ -7,14 +7,19 @@ import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.DefaultAbsSender;
 import org.telegram.telegrambots.bots.DefaultBotOptions;
 import org.telegram.telegrambots.meta.api.methods.BotApiMethod;
+import org.telegram.telegrambots.meta.api.methods.GetFile;
 import org.telegram.telegrambots.meta.api.methods.PartialBotApiMethod;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
 import org.telegram.telegrambots.meta.api.methods.send.SendSticker;
+import org.telegram.telegrambots.meta.api.methods.send.SendVoice;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.Message;
+import org.telegram.telegrambots.meta.api.objects.Voice;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.Serializable;
 
 @Slf4j
@@ -40,6 +45,7 @@ public class TelegramExecutor extends DefaultAbsSender {
             switch (method) {
                 case SendSticker sendSticker -> execute(sendSticker);
                 case SendPhoto sendPhoto -> execute(sendPhoto);
+                case SendVoice sendVoice -> execute(sendVoice);
 
                 case SendMessage sendMessage -> {
                     sendMessage.enableMarkdown(true);
@@ -101,5 +107,16 @@ public class TelegramExecutor extends DefaultAbsSender {
             log.error("TelegramApiException was thrown. Cause: ", ex);
         }
         return null;
+    }
+
+    public byte[] downloadVoice(Voice voice) {
+
+        try (InputStream is = downloadFileAsStream(execute(new GetFile(voice.getFileId())))) {
+            return is.readAllBytes();
+
+        } catch (TelegramApiException | IOException ex) {
+            log.error("{} was thrown. Cause: {}", ex.getClass().getSimpleName(), ex.getMessage());
+            return new byte[0];
+        }
     }
 }

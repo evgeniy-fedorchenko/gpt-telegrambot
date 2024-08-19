@@ -73,7 +73,6 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
      */
     private static final String DEFAULT_FILED_MODEL_ANSWER_MAP_VALUE = "Прости, но нейросеть отказалась генерировать изображение по такому промпту, попробуй как-нибудь изменить его";
     private static final int MAX_COUNT_SYMBOLS = 500;
-    private static final String TOO_LONG_MESS_ANSWER = "Слишком подробный промпт, постарайся немного сократить и уместиться в %s символов";
 
     /**
      * Счетчик процентов. Показывает прогресс генерации изображения. На самом деле не имеет связи с процессом
@@ -99,8 +98,8 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
     private final RetryTemplate retryTemplate;
     private final YandexProperties yandexProperties;
     private final TelegramExecutor telegramExecutor;
-    private final ExecutorService executorServiceOfVirtual;
     private final UserModeRedisService userModeCache;
+    private final ExecutorService executorServiceOfVirtual;
 
     @Override
     public String validate(Message inputMess) {
@@ -113,7 +112,7 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
     @Override
     public ArtRequestBody prepareRequest(Message inputMess) {
 
-        userModeCache.setMode(inputMess.getChatId(), Mode.YANDEX_ART_HOLDED);
+        userModeCache.setMode(inputMess.getChatId(), Mode.YANDEX_ART_HOLD);
 
         return ArtRequestBody.builder()
                 .modelUri(yandexProperties.getArtModelUri())
@@ -161,7 +160,7 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
         }
 
         ArtAnswer secondResponse = retryTemplate.execute(context -> {
-                    if (context.getRetryCount() == 120) { // TODO 15.08.2024 01:09: проверить
+                    if (context.getRetryCount() == 120) { // FIXME 20.08.2024 01:12: юзать константу из пропертей
                         percentReady = 1;
                     }
                     return this.processRetryInvoke(this.retryInvoke(firstResponse.getId()), chatId)
@@ -197,7 +196,7 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
                 return objectMapper.readValue(response.body().string(), ArtAnswer.class);
             }
 
-            // TODO 18.08.2024 01:07: не обрабатывать здесь, передать дальше
+            // FIXME 18.08.2024 01:07: не обрабатывать здесь, передать дальше
         } catch (JsonProcessingException ex) {
             throw new GptTelegramBotException("Request was successful, but it wasn't possible to deserialize the response into an object of the \"%s\" class. Ex:{}".formatted(ArtAnswer.class), ex);
 

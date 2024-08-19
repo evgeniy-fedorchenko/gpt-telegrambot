@@ -13,7 +13,8 @@ public enum Mode {
 
     YANDEX_GPT(YandexGptService.SERVICE_NAME, TelegramDistributor.Command.YA_GPT.getRepresentation(), ActionType.TYPING),
     YANDEX_ART(YandexArtService.SERVICE_NAME, TelegramDistributor.Command.YA_ART.getRepresentation(), ActionType.UPLOADPHOTO),
-    YANDEX_ART_HOLDED(null, null, null);
+    YANDEX_ART_HOLD(null, null, null);
+//    YANDEX_SPEECH(YandexSpeechService.SERVICE_NAME, TelegramDistributor.Command.YA_GPT.getRepresentation(), ActionType.RECORDVOICE);
 
     @Nullable
     private final String serviceName;
@@ -22,12 +23,12 @@ public enum Mode {
     @Nullable
     private final ActionType actionType;
 
-    public static Mode ofCommand(final String command) {
-        for (Mode mode : Mode.values()) {
-            if (mode.getEnablingCommand() != null && mode.getEnablingCommand().equals(command)) {
-                return mode;
-            }
-        }
-        return null;
-    }
+//    public static Mode ofCommand(final String command) {
+//        for (Mode mode : Mode.values()) {
+//            if (mode.getEnablingCommand() != null && mode.getEnablingCommand().equals(command)) {
+//                return mode;
+//            }
+//        }
+//        return null;
+//    }
 }

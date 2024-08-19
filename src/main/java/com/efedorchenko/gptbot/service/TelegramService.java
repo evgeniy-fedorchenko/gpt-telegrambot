@@ -6,6 +6,7 @@ import com.efedorchenko.gptbot.exception.RetryAttemptNotReadyException;
 import com.efedorchenko.gptbot.telegram.Mode;
 import com.efedorchenko.gptbot.telegram.TelegramBot;
 import com.efedorchenko.gptbot.telegram.TelegramExecutor;
+import com.efedorchenko.gptbot.yandex.service.SpeechRecogniser;
 import com.efedorchenko.gptbot.yandex.service.YandexArtService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.RequiredArgsConstructor;
@@ -33,7 +34,7 @@ public class TelegramService {
     /**
      * Объект для планирования отправки объектов {@link SendChatAction} - т.е. для уведомления пользователя о том,
      * что в данный момент бот задан работой. Использует один поток, каждая таска должна быть запущена асинхронно
-     * в виртуальном потоке, чтобы не этот шедулер не ждал ее выполнения, а приступал к следующей мгновенно
+     * в виртуальном потоке, чтобы этот шедулер не ждал ее выполнения, а приступал к следующей мгновенно
      *
      * @see TelegramService#scheduleChatAction(String chatId, Mode userMode)
      */
@@ -45,6 +46,7 @@ public class TelegramService {
     private final ApplicationContext applicationContext;
     private final UserModeRedisService userModeCache;
     private final TelegramExecutor telegramExecutor;
+    private final SpeechRecogniser speechRecogniser;
 
     @Log(result = false)   // result логируется методом, стоящим выше по стеку
     public <REQ extends Serializable, RESP> PartialBotApiMethod<? extends Serializable> processing(
@@ -57,6 +59,9 @@ public class TelegramService {
 
         try {
             AiModelService<REQ, RESP> aiModelService = getAiModelService(currentMode);
+            if (inMess.hasVoice()) {
+                inMess.setText(speechRecogniser.recognize(telegramExecutor.downloadVoice(inMess.getVoice())));
+            }
             inMess.setText(aiModelService.validate(inMess));
 
             REQ request = aiModelService.prepareRequest(inMess);
@@ -72,7 +77,7 @@ public class TelegramService {
         } finally {
             future.cancel(true);
             TelegramBot.localUser.remove();
-            if (userModeCache.getMode(chatId).equals(Mode.YANDEX_ART_HOLDED)) {
+            if (userModeCache.getMode(chatId).equals(Mode.YANDEX_ART_HOLD)) {
                 userModeCache.setMode(chatId, Mode.YANDEX_ART);
             }
         }
