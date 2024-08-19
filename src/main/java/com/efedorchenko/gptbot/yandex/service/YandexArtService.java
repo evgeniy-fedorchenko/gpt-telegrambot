@@ -116,7 +116,7 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
         userModeCache.setMode(inputMess.getChatId(), Mode.YANDEX_ART_HOLDED);
 
         return ArtRequestBody.builder()
-                .modelUri(yandexProperties.getArtModelUriPattern())
+                .modelUri(yandexProperties.getArtModelUri())
                 .messages(Collections.singletonList(ArtMessageUnit.builder().text(inputMess.getText()).build()))
                 .build();
     }
@@ -176,7 +176,7 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
 
     @Override
     public String getModelUrl() {
-        return yandexProperties.getArtModelBaseUrl().formatted(yandexProperties.getFolderId());
+        return yandexProperties.getArtModelBaseUrl();
     }
 
     @Override

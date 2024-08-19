@@ -1,9 +1,11 @@
 package com.efedorchenko.gptbot.configuration;
 
+import com.efedorchenko.gptbot.configuration.properties.RedisProperties;
 import com.efedorchenko.gptbot.telegram.Mode;
 import com.efedorchenko.gptbot.yandex.model.GptMessageUnit;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,9 +17,11 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 @Configuration
 @EnableCaching
 @AllArgsConstructor
+@EnableConfigurationProperties(RedisProperties.class)
 public class RedisConfiguration {
 
     private final ObjectMapper objectMapper;
+    private final RedisConnectionFactory connectionFactory;
 
     /**
      * Кеш для хранения истории сообщений в режиме YandexGPT<br>
@@ -28,7 +32,7 @@ public class RedisConfiguration {
      * </lu>
      */
     @Bean
-    public RedisTemplate<String, GptMessageUnit> historyRedisTemplate(RedisConnectionFactory connectionFactory) {
+    public RedisTemplate<String, GptMessageUnit> historyRedisTemplate() {
         RedisTemplate<String, GptMessageUnit> redisTemplate = new RedisTemplate<>();
         redisTemplate.setConnectionFactory(connectionFactory);
 
@@ -42,7 +46,7 @@ public class RedisConfiguration {
     }
 
     @Bean
-    public RedisTemplate<String, Mode> userModeRedisTemplate(RedisConnectionFactory connectionFactory) {
+    public RedisTemplate<String, Mode> userModeRedisTemplate() {
         RedisTemplate<String, Mode> redisTemplate = new RedisTemplate<>();
         redisTemplate.setConnectionFactory(connectionFactory);
 

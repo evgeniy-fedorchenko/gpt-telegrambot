@@ -1,8 +1,8 @@
 package com.efedorchenko.gptbot.data;
 
+import com.efedorchenko.gptbot.configuration.properties.RedisProperties;
 import com.efedorchenko.gptbot.yandex.model.GptMessageUnit;
 import jakarta.validation.constraints.NotNull;
-import lombok.AllArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -12,18 +12,23 @@ import java.util.Collections;
 import java.util.List;
 
 @Component
-@AllArgsConstructor
 public class HistoryRedisServiceImpl implements HistoryRedisService {
 
     private final RedisTemplate<String, GptMessageUnit> redisTemplate;
-    private static final int MAX_MESSAGES = 30;
-    private static final Duration MESS_HISTORY_TTL = Duration.of(2, ChronoUnit.HOURS);
+    private final RedisProperties redisProperties;
+    private final Duration messHistoryTtl;
 
-    private static final String PREFIX = "history-";
+    public HistoryRedisServiceImpl(RedisTemplate<String, GptMessageUnit> redisTemplate, RedisProperties redisProperties) {
+        this.redisTemplate = redisTemplate;
+        this.redisProperties = redisProperties;
+        this.messHistoryTtl = Duration.of(redisProperties.getHistoryTtlMillis(), ChronoUnit.MILLIS);
+    }
+
 
     @Override
     public @NotNull List<GptMessageUnit> getHistory(String userChatId) {
-        List<GptMessageUnit> gptMessageUnits = redisTemplate.opsForList().range(PREFIX + userChatId, 0, -1);
+        String key = redisProperties.getHistoryPrefix() + userChatId;
+        List<GptMessageUnit> gptMessageUnits = redisTemplate.opsForList().range(key, 0, -1);
         if (gptMessageUnits == null) {
             return Collections.emptyList();
         }
@@ -32,14 +37,16 @@ public class HistoryRedisServiceImpl implements HistoryRedisService {
 
     @Override
     public void addMessage(String userChatId, GptMessageUnit gptMessageUnit) {
-        redisTemplate.opsForList().rightPush(PREFIX + userChatId, gptMessageUnit);
-        redisTemplate.opsForList().trim(PREFIX + userChatId, -MAX_MESSAGES, -1);
-        redisTemplate.expire(PREFIX + userChatId, MESS_HISTORY_TTL);
+        String key = redisProperties.getHistoryPrefix() + userChatId;
+        redisTemplate.opsForList().rightPush(key, gptMessageUnit);
+        redisTemplate.opsForList().trim(key, -redisProperties.getHistoryQueueCapacity(), -1);
+        redisTemplate.expire(key, messHistoryTtl);
     }
 
     @Override
     public void clean(String chatId) {
-        redisTemplate.delete(PREFIX + chatId);
+        String key = redisProperties.getHistoryPrefix() + chatId;
+        redisTemplate.delete(key);
     }
 
 }

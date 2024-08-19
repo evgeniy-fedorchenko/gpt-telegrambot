@@ -2,21 +2,16 @@ package com.efedorchenko.gptbot.configuration.properties;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
+import org.springframework.boot.context.properties.bind.ConstructorBinding;
 import org.springframework.validation.annotation.Validated;
 
 @Getter
-@Setter
-@Component
 @Validated
-@ConfigurationProperties(
-        prefix = TelegramProperties.CONFIGURATION_PREFIX,
-        ignoreUnknownFields = false,
-        ignoreInvalidFields = false
-)
+@AllArgsConstructor(onConstructor_ = @ConstructorBinding)
+@ConfigurationProperties(prefix = TelegramProperties.CONFIGURATION_PREFIX, ignoreUnknownFields = false)
 public class TelegramProperties {
 
     static final String CONFIGURATION_PREFIX = "telegram-bot";
@@ -27,7 +22,7 @@ public class TelegramProperties {
      */
     @NotBlank
     @Pattern(regexp = "^\\d{10}:[A-Za-z\\d_]{35}$")
-    private String token;
+    private final String token;
 
     /**
      * Уникальный username бота (не путать с именем)<br>
@@ -35,6 +30,6 @@ public class TelegramProperties {
      */
     @NotBlank
     @Pattern(regexp = "^.{2,}bot$")
-    private String username;
+    private final String username;
 
 }

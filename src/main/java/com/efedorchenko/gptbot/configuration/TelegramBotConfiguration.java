@@ -1,9 +1,11 @@
 package com.efedorchenko.gptbot.configuration;
 
+import com.efedorchenko.gptbot.configuration.properties.TelegramProperties;
 import com.efedorchenko.gptbot.telegram.TelegramBot;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.SpringApplication;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,6 +16,7 @@ import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 @Slf4j
 @Configuration
 @AllArgsConstructor
+@EnableConfigurationProperties(TelegramProperties.class)
 public class TelegramBotConfiguration {
 
     private final ApplicationContext applicationContext;

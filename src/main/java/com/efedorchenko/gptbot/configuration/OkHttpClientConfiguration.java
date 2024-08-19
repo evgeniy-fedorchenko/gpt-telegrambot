@@ -6,6 +6,7 @@ import okhttp3.ConnectionPool;
 import okhttp3.Dispatcher;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -13,6 +14,7 @@ import java.util.concurrent.TimeUnit;
 
 @Configuration
 @AllArgsConstructor
+@EnableConfigurationProperties(OkhttpProperties.class)
 public class OkHttpClientConfiguration {
 
     public static final MediaType MT_APPLICATION_JSON = MediaType.get("application/json; charset=utf-8");

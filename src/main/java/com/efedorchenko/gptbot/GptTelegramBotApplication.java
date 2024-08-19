@@ -1,10 +1,11 @@
 package com.efedorchenko.gptbot;
 
+import com.efedorchenko.gptbot.configuration.properties.YandexProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 
-@EnableScheduling
+@EnableConfigurationProperties(YandexProperties.class)
 @SpringBootApplication
 public class GptTelegramBotApplication {
 
@@ -19,6 +20,7 @@ public class GptTelegramBotApplication {
 
 	// ----- Release 1.0.0 -----
 	// TODO 10.08.2024 16:22: генерация картинки асинхронно для юзера (на беке увеличивать промежуток между временем опроса)
+	// TODO 19.08.2024 23:34: скрывать секретные хедеры в интерсепторе
 	// TODO 10.08.2024 16:24: добавление Midjourney
 	// TODO 10.08.2024 16:26: добавление ChatGPT
 

@@ -2,7 +2,6 @@ package com.efedorchenko.gptbot.configuration;
 
 import com.efedorchenko.gptbot.exception.RetryAttemptNotReadyException;
 import jakarta.validation.constraints.Positive;
-import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -15,16 +14,11 @@ import org.springframework.validation.annotation.Validated;
 
 import java.util.Collections;
 
-@Getter
 @Setter
 @Component
 @Validated
 @Configuration
-@ConfigurationProperties(
-        prefix = RetryTemplateConfiguration.CONFIGURATION_PREFIX,
-        ignoreUnknownFields = false,
-        ignoreInvalidFields = false
-)
+@ConfigurationProperties(prefix = RetryTemplateConfiguration.CONFIGURATION_PREFIX, ignoreUnknownFields = false)
 public class RetryTemplateConfiguration {
 
     static final String CONFIGURATION_PREFIX = "retry";

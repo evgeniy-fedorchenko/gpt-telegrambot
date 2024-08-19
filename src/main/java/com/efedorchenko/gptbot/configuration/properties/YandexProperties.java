@@ -4,53 +4,55 @@ import jakarta.annotation.PostConstruct;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Pattern;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.Setter;
 import org.hibernate.validator.constraints.URL;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
+import org.springframework.boot.context.properties.bind.ConstructorBinding;
 import org.springframework.validation.annotation.Validated;
 
-@Setter
 @Getter
-@Component
 @Validated
-@ConfigurationProperties(
-        prefix = YandexProperties.CONFIGURATION_PREFIX,
-        ignoreUnknownFields = false,
-        ignoreInvalidFields = false
-)
+@AllArgsConstructor(onConstructor_ = @ConstructorBinding)
+@ConfigurationProperties(prefix = YandexProperties.CONFIGURATION_PREFIX, ignoreUnknownFields = false)
 public class YandexProperties {
 
     static final String CONFIGURATION_PREFIX = "yandex";
 
     /**
-     * Урл, по которому можно обратиться к модели {@code YandexGPT} через http (синхронный доступ)
+     * URL, по которому можно обратиться к модели {@code YandexGPT} через http (синхронный доступ)
      */
     @NotBlank
     @URL(protocol = "https")
-    private String chatbotBaseUrl;
+    private final String chatbotBaseUrl;
 
     /**
-     * Урл, по которому можно обратиться к модели {@code YandexART} через http (асинхронный доступ)
+     * URL, по которому можно обратиться к модели {@code YandexART} через http (асинхронный доступ)
      */
     @NotBlank
     @URL(protocol = "https")
-    private String artModelBaseUrl;
+    private final String artModelBaseUrl;
+
+    /**
+     * URL для обновления IAM-токена
+     */
+    @NotEmpty
+    @URL(protocol = "https")
+    private final String iamTokenUpdaterUrl;
 
     /**
      * Внутренний URI. Идентификатор модели {@code YandexGPT}, содержащий текстовый
-     * плейсхолдер для вставки идентификатор каталога через {@link String#formatted}
+     * плейсхолдер для вставки идентификатора каталога через {@link String#formatted}
      */
     @NotBlank
-    private String chatbotUriPattern;
+    private final String chatbotUri;
 
     /**
      * Внутренний URI. Идентификатор модели {@code YandexART}, содержащий текстовый
-     * плейсхолдер для вставки идентификатор каталога через {@link String#formatted}
+     * плейсхолдер для вставки идентификатора каталога через {@link String#formatted}
      */
     @NotBlank
-    private String artModelUriPattern;
+    private final String artModelUri;
 
     /**
      * Адрес для проверки готовности изображения, отправленного на генерацию к {@code YandexART},
@@ -58,14 +60,7 @@ public class YandexProperties {
      */
     @NotEmpty
     @URL(protocol = "https")
-    private String artModelCompleteUrlPattern;
-
-    /**
-     * Урл для обновления IAM-токена
-     */
-    @NotEmpty
-    @URL(protocol = "https")
-    private String iamTokenUpdaterUrl;
+    private final String artModelCompleteUrlPattern;
 
     /**
      * Идентификатор задействованного каталога Yandex Cloud.<br>
@@ -73,21 +68,31 @@ public class YandexProperties {
      */
     @NotEmpty
     @Pattern(regexp = "^[a-z0-9]{15,25}$")
-    private String folderId;
+    private final String folderId;
 
     /**
      * Главный токен авторизации в системах Foundation Models на Yandex Cloud.
-     * Используется для получения и обновления IAM-токена.<br>
-     * Regexp: Латинская строчная "Y", затем цифра от [0 - 3], затем 58 латинских букв/цифр,
-     * допустим символ "Hyphen-minus", hex в UTF-8: U+002D
+     * Используется для получения и обновления IAM-токена.<p>
+     * <b>Regexp:</b> Латинская строчная "Y", затем цифра в промежутке [0 - 3],
+     * затем 58 латинских букв/цифр, допустим символ "Hyphen-minus", hex в UTF-8: U+002D
      */
     @NotEmpty
     @Pattern(regexp = "^y[0-3]_[a-zA-Z0-9_-]{58}$")
-    private String oauthToken;
+    private final String oauthToken;
+
+    @NotEmpty
+    @URL(protocol = "https")
+    private final String recognizeUrl;
+
+//    @NotEmpty
+//    @URL(protocol = "https")
+//    private final String synthesizeUrlPattern;
 
     @PostConstruct
     public void yandexPropertiesFormatted() {
-        this.chatbotUriPattern = this.chatbotUriPattern.formatted(folderId);
-        this.artModelUriPattern = this.artModelUriPattern.formatted(folderId);
+//        this.chatbotUriPattern = this.chatbotUriPattern.formatted(folderId);
+//        this.artModelUriPattern = this.artModelUriPattern.formatted(folderId);
+//        this.recognizeUrlPattern = this.recognizeUrlPattern.formatted(folderId);
+//        this.synthesizeUrlPattern = this.synthesizeUrlPattern.formatted(folderId);
     }
 }

@@ -59,7 +59,7 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
                 executorServiceOfVirtual
         );
         return GptRequestBody.builder()
-                .modelUri(yandexProperties.getChatbotUriPattern().formatted())
+                .modelUri(yandexProperties.getChatbotUri().formatted())
                 .messages(history)
                 .build();
     }
