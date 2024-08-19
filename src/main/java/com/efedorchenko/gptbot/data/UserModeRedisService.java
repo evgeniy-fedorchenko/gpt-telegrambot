@@ -5,6 +5,7 @@ import com.efedorchenko.gptbot.telegram.Mode;
 public interface UserModeRedisService {
 
     Mode getMode(String userChatId);
+
     default Mode getMode(Long userChatId) {
         return this.getMode(String.valueOf(userChatId));
     }
