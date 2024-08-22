@@ -3,6 +3,7 @@ package com.efedorchenko.gptbot.yandex.service;
 import com.efedorchenko.gptbot.configuration.properties.YandexProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
@@ -11,15 +12,17 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.util.Optional;
 
-@RequiredArgsConstructor
+@Slf4j
 @Component
+@RequiredArgsConstructor
 public class SpeechRecogniser {
 
     private final OkHttpClient httpClient;
     private final ObjectMapper objectMapper;
     private final YandexProperties yandexProperties;
-    public String recognize(byte[] bytes) {
+    public Optional<String> recognize(byte[] bytes) {
 
         Request request = new Request.Builder()
                 .url(yandexProperties.getRecognizeUrl())
@@ -29,9 +32,11 @@ public class SpeechRecogniser {
 
         try (Response response = httpClient.newCall(request).execute()) {
             String string = response.body().string();
-            return objectMapper.readTree(string).get("result").asText();
+            String result = objectMapper.readTree(string).get("result").asText();
+            return Optional.of(result);
         } catch (IOException ex) {
-            throw new RuntimeException("Ошибка распознавания. Ex: " + ex); // FIXME 19.08.2024 21:46
+            log.error("Ошибка распознавания. Ex: {}", ex.getMessage());
+            return Optional.empty();
         }
     }
 }

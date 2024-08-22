@@ -24,6 +24,7 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.*;
 
 @Slf4j
@@ -60,7 +61,11 @@ public class TelegramService {
         try {
             AiModelService<REQ, RESP> aiModelService = getAiModelService(currentMode);
             if (inMess.hasVoice()) {
-                inMess.setText(speechRecogniser.recognize(telegramExecutor.downloadVoice(inMess.getVoice())));
+                byte[] voiceBytes = telegramExecutor.downloadVoice(inMess.getVoice());
+                Optional<String> recognizeOpt = speechRecogniser.recognize(voiceBytes);
+                if (recognizeOpt.isEmpty()) {
+                    return new SendMessage(chatId, "{a.b}");
+                }
             }
             inMess.setText(aiModelService.validate(inMess));
 
