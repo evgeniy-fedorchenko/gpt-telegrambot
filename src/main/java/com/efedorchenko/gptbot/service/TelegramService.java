@@ -1,6 +1,7 @@
 package com.efedorchenko.gptbot.service;
 
 import com.efedorchenko.gptbot.aop.Log;
+import com.efedorchenko.gptbot.configuration.properties.DefaultBotAnswer;
 import com.efedorchenko.gptbot.data.UserModeRedisService;
 import com.efedorchenko.gptbot.exception.RetryAttemptNotReadyException;
 import com.efedorchenko.gptbot.telegram.Mode;
@@ -43,11 +44,12 @@ public class TelegramService {
 
     private static final long SCHEDULER_RUN_TASK_PERIOD_MILLIS = 5_000L;
 
-    private final ExecutorService executorServiceOfVirtual;
-    private final ApplicationContext applicationContext;
-    private final UserModeRedisService userModeCache;
-    private final TelegramExecutor telegramExecutor;
+    private final DefaultBotAnswer defaultBotAnswer;
     private final SpeechRecogniser speechRecogniser;
+    private final TelegramExecutor telegramExecutor;
+    private final UserModeRedisService userModeCache;
+    private final ApplicationContext applicationContext;
+    private final ExecutorService executorServiceOfVirtual;
 
     @Log(result = false)   // result логируется методом, стоящим выше по стеку
     public <REQ extends Serializable, RESP> PartialBotApiMethod<? extends Serializable> processing(
@@ -64,9 +66,11 @@ public class TelegramService {
                 byte[] voiceBytes = telegramExecutor.downloadVoice(inMess.getVoice());
                 Optional<String> recognizeOpt = speechRecogniser.recognize(voiceBytes);
                 if (recognizeOpt.isEmpty()) {
-                    return new SendMessage(chatId, "{a.b}");
+                    return new SendMessage(chatId, defaultBotAnswer.couldNotRecognizeVoice());
                 }
+                inMess.setText(recognizeOpt.get());
             }
+
             inMess.setText(aiModelService.validate(inMess));
 
             REQ request = aiModelService.prepareRequest(inMess);
@@ -115,32 +119,32 @@ public class TelegramService {
         switch (thrown) {
             case IllegalStateException ise -> {
                 log.error(NETWORK_MARKER, "IllegalStateException -> Update: {}\nEx: ", update, ise);
-                return new SendMessage(chatId, ISE_ANSWER);
+                return new SendMessage(chatId, defaultBotAnswer.illegalState());
             }
             case NullPointerException npe -> {
                 log.error(POWER_MARKER, "NullPointerException -> Update: {}\nEx: ", update, npe);
-                return new SendMessage(chatId, NPE_ANSWER);
+                return new SendMessage(chatId, defaultBotAnswer.nullPointer());
             }
 
 //            Картинка не успела сгенериться за отведенные 6 минут
             case RetryAttemptNotReadyException ranre -> {
                 log.warn(RANRE_MARKER, ranre.getMessage());
 
-                return new SendMessage(chatId, RANRE_ANSWER);
+                return new SendMessage(chatId, defaultBotAnswer.retryAttemptNotReady());
             }
 
             case JsonProcessingException jpe -> {
                 log.error(LOGIC_MARKER, "JsonProcessingException -> Update: {}\nEx: ", update, jpe);
-                return new SendMessage(chatId, JPE_ANSWER);
+                return new SendMessage(chatId, defaultBotAnswer.jsonProcessing());
             }
             case IOException ioe -> {
                 Thread.dumpStack();   // Maybe this is a OutOfMemoryError. Answer of model is too large
                 log.error(NETWORK_MARKER, "IOException was thrown. Dump of stack is above, maybe. Update: {}.\nEx: ", update, ioe);
-                return new SendMessage(chatId, COMMON_ANSWER);
+                return new SendMessage(chatId, defaultBotAnswer.otherExs());
             }
             default -> {
                 log.error(LOGIC_MARKER, "Cannot processing update, unexpected exception. Update: {}. Ex: ", update, thrown);
-                return new SendMessage(chatId, COMMON_ANSWER);
+                return new SendMessage(chatId, defaultBotAnswer.otherExs());
             }
         }
     }
@@ -152,10 +156,5 @@ public class TelegramService {
     private static final Marker POWER_MARKER = MarkerFactory.getMarker("POWER");
     private static final Marker NETWORK_MARKER = MarkerFactory.getMarker("NETWORK");
     private static final Marker RANRE_MARKER = MarkerFactory.getMarker("RetryAttemptNotReadyException");
-    private static final String JPE_ANSWER = "Упс!\nПри обработке вашего запроса (или ответа) что-то пошло не так! :(\nМы записали эту ошибку, но будем вам очень признательны, если дадите кратенькую обратную связь.\nИспользуйте для этого -> /feedback\n\nТолько добра ❤\uFE0F";
-    private static final String ISE_ANSWER = "Упс!\nПри отправке вашего запроса что-то пошло не так! :(\nМы записали эту ошибку, но будем вам очень признательны, если дадите кратенькую обратную связь.\nИспользуйте для этого -> /feedback\n\nТолько добра ❤\uFE0F";
-    private static final String COMMON_ANSWER = "Упс!\nПри обработке запроса произошла непредвиденная ситуация, пока что не могу сказать, что случилось :(\nМы записали эту ошибку, но будем вам очень признательны, если дадите кратенькую обратную связь.\nИспользуйте для этого -> /feedback\n\nТолько добра ❤\uFE0F";
-    private static final String NPE_ANSWER = "Упс!\nКажется, у нас сбой питания на сервере, но мы работаем на этим. :(\nМы записали эту ошибку, но если вам не все равно - дайте нам знать - будем вам очень признательны\nИспользуйте для этого -> /feedback\n\nТолько добра ❤\uFE0F";
-    private static final String RANRE_ANSWER = "Прости, но что-то не получается создать картинку по такому описанию в срок :(\nТы можешь написать нам и мы проверим твое изображение в ручную\nИспользуйте для этого -> /feedback\n\nТолько добра ❤\uFE0F";
 
 }

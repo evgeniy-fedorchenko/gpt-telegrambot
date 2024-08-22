@@ -1,9 +1,9 @@
 package com.efedorchenko.gptbot.telegram;
 
 import com.efedorchenko.gptbot.aop.Log;
+import com.efedorchenko.gptbot.configuration.properties.DefaultBotAnswer;
 import com.efedorchenko.gptbot.data.HistoryRedisService;
 import com.efedorchenko.gptbot.data.UserModeRedisService;
-import com.efedorchenko.gptbot.service.DefaultAnswers;
 import com.efedorchenko.gptbot.service.TelegramService;
 import jakarta.annotation.Nullable;
 import lombok.AllArgsConstructor;
@@ -41,27 +41,30 @@ public class TelegramDistributor {
 
     private final UserModeRedisService userModeCache;
     private final TelegramService telegramService;
+    private final DefaultBotAnswer defaultBotAnswer;
 
     public TelegramDistributor(UserModeRedisService userModeCache,
                                HistoryRedisService historyCache,
-                               TelegramService telegramService) {
+                               TelegramService telegramService,
+                               DefaultBotAnswer defaultBotAnswer) {
         this.userModeCache = userModeCache;
         this.telegramService = telegramService;
+        this.defaultBotAnswer = defaultBotAnswer;
 
-        this.unsupportedCommandReact = chatId -> new SendMessage(chatId, "Command is not supported");
+        this.unsupportedCommandReact = chatId -> new SendMessage(chatId, defaultBotAnswer.unknown());
         this.commandReactMap = Map.of(
-                START.getRepresentation(), chatId -> new SendMessage(chatId, START.getAnswerTest()),
-                HELP.getRepresentation(), chatId -> new SendMessage(chatId, HELP.getAnswerTest()),
-                FEEDBACK.getRepresentation(), chatId -> new SendMessage(chatId, FEEDBACK.getAnswerTest()),
+                START.getRepresentation(), chatId -> new SendMessage(chatId, defaultBotAnswer.start()),
+                HELP.getRepresentation(), chatId -> new SendMessage(chatId, defaultBotAnswer.help()),
+                FEEDBACK.getRepresentation(), chatId -> new SendMessage(chatId, defaultBotAnswer.feedback()),
 
                 YA_GPT.getRepresentation(), chatId -> {
                     userModeCache.setMode(chatId, Mode.YANDEX_GPT);
                     historyCache.clean(chatId);
-                    return new SendMessage(chatId, YA_GPT.getAnswerTest());
+                    return new SendMessage(chatId, defaultBotAnswer.yagpt());
                 },
                 YA_ART.getRepresentation(), chatId -> {
                     userModeCache.setMode(chatId, Mode.YANDEX_ART);
-                    return new SendMessage(chatId, YA_ART.getAnswerTest());
+                    return new SendMessage(chatId, defaultBotAnswer.yaart());
                 }
         );
     }
@@ -87,13 +90,13 @@ public class TelegramDistributor {
 
 //        Если нет текста и ГС - даем ОС (подпись под фото не считается за текст)
         if (!inMess.hasText() && !inMess.hasVoice()) {
-            return new SendMessage(String.valueOf(chatId), "Прости, но я понимаю только текст или голос");
+            return new SendMessage(String.valueOf(chatId), defaultBotAnswer.invalidDataFormat());
         }
 
 //        Block if user wait for the image as YANDEX_ART mode
         Mode currentMode = userModeCache.getMode(chatId); // Для аварийного сброса: userModeCache.setMode(chatId, Mode.YANDEX_ART)
         if (currentMode.equals(Mode.YANDEX_ART_HOLD)) {
-            return new SendMessage(chatId, "Не торопись, подожди еще немного, окей?\nНадо завершить предыдущую генерацию");
+            return new SendMessage(chatId, defaultBotAnswer.artGenProcessing());
         }
 
 //        Handle commands
@@ -109,14 +112,13 @@ public class TelegramDistributor {
     @AllArgsConstructor
     public enum Command {
 
-        START("/start", DefaultAnswers.START_COMMAND_ANSWER.getAnswer()),
-        HELP("/help", DefaultAnswers.HELP_COMMAND_ANSWER.getAnswer()),
-        FEEDBACK("/feedback", DefaultAnswers.FEEDBACK_COMMAND_ANSWER.getAnswer()),
-        YA_GPT("/gpt", "Ок, начнем новый чат!"),
-        YA_ART("/art", "Ок, скинь мне подробное описание и подожди чуть-чуть\nЯ отравлю изображение, как только оно будет готово");
+        START("/start"),
+        HELP("/help"),
+        FEEDBACK("/feedback"),
+        YA_GPT("/gpt"),
+        YA_ART("/art");
 
         private final String representation;
-        private final String answerTest;
 
     }
 }
