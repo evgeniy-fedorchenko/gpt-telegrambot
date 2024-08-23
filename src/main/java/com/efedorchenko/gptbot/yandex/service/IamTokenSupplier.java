@@ -12,6 +12,8 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -60,6 +62,7 @@ public class IamTokenSupplier {
 
             Request request = new Request.Builder()
                     .url(yandexProperties.getIamTokenUpdaterUrl())
+                    .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                     .post(RequestBody.create(body, OkHttpClientConfiguration.MT_APPLICATION_JSON))
                     .build();
 

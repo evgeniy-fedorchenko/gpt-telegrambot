@@ -1,6 +1,5 @@
 package com.efedorchenko.gptbot.yandex.service;
 
-import com.efedorchenko.gptbot.aop.Log;
 import com.efedorchenko.gptbot.configuration.OkHttpClientConfiguration;
 import com.efedorchenko.gptbot.configuration.properties.YandexProperties;
 import com.efedorchenko.gptbot.data.UserModeRedisService;
@@ -9,6 +8,7 @@ import com.efedorchenko.gptbot.exception.RetryAttemptNotReadyException;
 import com.efedorchenko.gptbot.service.AiModelService;
 import com.efedorchenko.gptbot.telegram.Mode;
 import com.efedorchenko.gptbot.telegram.TelegramExecutor;
+import com.efedorchenko.gptbot.utils.logging.Log;
 import com.efedorchenko.gptbot.yandex.model.ArtAnswer;
 import com.efedorchenko.gptbot.yandex.model.ArtMessageUnit;
 import com.efedorchenko.gptbot.yandex.model.ArtRequestBody;

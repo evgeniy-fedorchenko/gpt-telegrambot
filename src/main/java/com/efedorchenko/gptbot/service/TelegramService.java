@@ -1,12 +1,12 @@
 package com.efedorchenko.gptbot.service;
 
-import com.efedorchenko.gptbot.aop.Log;
 import com.efedorchenko.gptbot.configuration.properties.DefaultBotAnswer;
 import com.efedorchenko.gptbot.data.UserModeRedisService;
 import com.efedorchenko.gptbot.exception.RetryAttemptNotReadyException;
 import com.efedorchenko.gptbot.telegram.Mode;
 import com.efedorchenko.gptbot.telegram.TelegramBot;
 import com.efedorchenko.gptbot.telegram.TelegramExecutor;
+import com.efedorchenko.gptbot.utils.logging.Log;
 import com.efedorchenko.gptbot.yandex.service.SpeechRecogniser;
 import com.efedorchenko.gptbot.yandex.service.YandexArtService;
 import com.fasterxml.jackson.core.JsonProcessingException;

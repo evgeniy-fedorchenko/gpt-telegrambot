@@ -1,10 +1,10 @@
 package com.efedorchenko.gptbot.telegram;
 
-import com.efedorchenko.gptbot.aop.Log;
 import com.efedorchenko.gptbot.configuration.properties.DefaultBotAnswer;
 import com.efedorchenko.gptbot.data.HistoryRedisService;
 import com.efedorchenko.gptbot.data.UserModeRedisService;
 import com.efedorchenko.gptbot.service.TelegramService;
+import com.efedorchenko.gptbot.utils.logging.Log;
 import jakarta.annotation.Nullable;
 import lombok.AllArgsConstructor;
 import lombok.Getter;

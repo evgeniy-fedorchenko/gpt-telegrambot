@@ -1,10 +1,10 @@
 package com.efedorchenko.gptbot.yandex.service;
 
-import com.efedorchenko.gptbot.aop.Log;
 import com.efedorchenko.gptbot.configuration.OkHttpClientConfiguration;
 import com.efedorchenko.gptbot.configuration.properties.YandexProperties;
 import com.efedorchenko.gptbot.data.HistoryRedisService;
 import com.efedorchenko.gptbot.service.AiModelService;
+import com.efedorchenko.gptbot.utils.logging.Log;
 import com.efedorchenko.gptbot.yandex.model.GptAnswer;
 import com.efedorchenko.gptbot.yandex.model.GptMessageUnit;
 import com.efedorchenko.gptbot.yandex.model.GptRequestBody;

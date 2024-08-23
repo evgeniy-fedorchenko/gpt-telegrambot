@@ -19,8 +19,6 @@ import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 @EnableConfigurationProperties(TelegramProperties.class)
 public class TelegramBotConfiguration {
 
-    private final ApplicationContext applicationContext;
-
     /**
      * Бин взаимодействия с Telegram API
      * <p>
@@ -32,7 +30,7 @@ public class TelegramBotConfiguration {
      * @return Системный объект для работы с серверами Telegram
      */
     @Bean
-    public TelegramBotsApi telegramBotsApi(TelegramBot telegramBot) {
+    public TelegramBotsApi telegramBotsApi(TelegramBot telegramBot, ApplicationContext applicationContext) {
 
         try {
             TelegramBotsApi telegramBotsApi = new TelegramBotsApi(DefaultBotSession.class);
