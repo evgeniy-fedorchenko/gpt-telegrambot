@@ -7,6 +7,8 @@ import com.efedorchenko.gptbot.telegram.Mode;
 import com.efedorchenko.gptbot.telegram.TelegramBot;
 import com.efedorchenko.gptbot.telegram.TelegramExecutor;
 import com.efedorchenko.gptbot.utils.logging.Log;
+import com.efedorchenko.gptbot.yandex.model.SpeechKitAnswer;
+import com.efedorchenko.gptbot.yandex.model.VoiceRecResult;
 import com.efedorchenko.gptbot.yandex.service.SpeechRecogniser;
 import com.efedorchenko.gptbot.yandex.service.YandexArtService;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -21,6 +23,7 @@ import org.telegram.telegrambots.meta.api.methods.send.SendChatAction;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.Voice;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -62,13 +65,13 @@ public class TelegramService {
 
         try {
             AiModelService<REQ, RESP> aiModelService = getAiModelService(currentMode);
+
             if (inMess.hasVoice()) {
-                byte[] voiceBytes = telegramExecutor.downloadVoice(inMess.getVoice());
-                Optional<String> recognizeOpt = speechRecogniser.recognize(voiceBytes);
-                if (recognizeOpt.isEmpty()) {
-                    return new SendMessage(chatId, defaultBotAnswer.couldNotRecognizeVoice());
+                VoiceRecResult voiceRecResult = recogniseVoice(inMess.getVoice());
+                if (voiceRecResult.getAnswerToErrorMessage() != null) {
+                    return new SendMessage(chatId, voiceRecResult.getAnswerToErrorMessage());
                 }
-                inMess.setText(recognizeOpt.get());
+                inMess.setText(voiceRecResult.getRecognizedMessage());
             }
 
             inMess.setText(aiModelService.validate(inMess));
@@ -90,6 +93,23 @@ public class TelegramService {
                 userModeCache.setMode(chatId, Mode.YANDEX_ART);
             }
         }
+    }
+
+    private VoiceRecResult recogniseVoice(Voice voice) {
+
+        if (voice.getDuration() >= 30) {
+            return VoiceRecResult.builder().answerToErrorMessage(defaultBotAnswer.voiceIsLongerThan30s()).build();
+        }
+        byte[] voiceBytes = telegramExecutor.downloadVoice(voice);
+        Optional<SpeechKitAnswer> recognizeOpt = speechRecogniser.doRecognize(voiceBytes);
+        if (recognizeOpt.isEmpty()) {
+            return VoiceRecResult.builder().answerToErrorMessage(defaultBotAnswer.couldNotRecognizeVoice()).build();
+        }
+        SpeechKitAnswer recognized = recognizeOpt.get();
+        if (recognized.getErrorMessage() != null) {
+            return VoiceRecResult.builder().answerToErrorMessage(recognized.getErrorMessage()).build();
+        }
+        return VoiceRecResult.builder().recognizedMessage(recognized.getResult()).build();
     }
 
     @SuppressWarnings("unchecked")
@@ -150,7 +170,7 @@ public class TelegramService {
     }
 
 
-//    Маркеты для log.error и сообщения для юзеров, отправляемые в случае ошибок
+//    Маркеты для log.error
 
     private static final Marker LOGIC_MARKER = MarkerFactory.getMarker("LOGIC");
     private static final Marker POWER_MARKER = MarkerFactory.getMarker("POWER");

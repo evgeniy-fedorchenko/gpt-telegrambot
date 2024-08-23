@@ -1,6 +1,7 @@
 package com.efedorchenko.gptbot.yandex.service;
 
 import com.efedorchenko.gptbot.configuration.properties.YandexProperties;
+import com.efedorchenko.gptbot.yandex.model.SpeechKitAnswer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,7 +36,7 @@ public class SpeechRecogniser {
     private final YandexProperties yandexProperties;
     private final ExecutorService executorServiceOfVirtual;
 
-    public Optional<String> recognize(byte[] bytes) {
+    public Optional<SpeechKitAnswer> doRecognize(byte[] bytes) {
 
         Request request = new Request.Builder()
                 .url(yandexProperties.getRecognizeUrl())
@@ -47,12 +48,16 @@ public class SpeechRecogniser {
         try (Response response = httpClient.newCall(request).execute()) {
 
             String string = response.body().string();
-            String result = objectMapper.readTree(string).get("result").asText();
-            if (result.isEmpty()) {
+            SpeechKitAnswer recAnswer = objectMapper.readValue(string, SpeechKitAnswer.class);
+
+            if (recAnswer.getResult() == null) {
+                return Optional.of(recAnswer);
+            }
+            if (recAnswer.getResult().isEmpty()) {
                 saveUnrecognizedVoiceAsync(bytes);
                 return Optional.empty();
             }
-            return Optional.of(result);
+            return Optional.of(recAnswer);
 
         } catch (IOException ex) {
             log.error("Ошибка распознавания. Ex: {}", ex.getMessage());

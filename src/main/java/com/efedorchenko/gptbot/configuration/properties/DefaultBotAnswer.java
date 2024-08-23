@@ -74,5 +74,8 @@ public class DefaultBotAnswer {
     public String couldNotRecognizeVoice() {
         return defaultBotAnswers().getProperty(OTHERS_KEY + "could_not_recognize_voice");
     }
+    public String voiceIsLongerThan30s() {
+        return defaultBotAnswers().getProperty(OTHERS_KEY + "voice_is_longer_than_30s");
+    }
 
 }
