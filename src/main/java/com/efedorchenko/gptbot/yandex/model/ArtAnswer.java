@@ -1,6 +1,6 @@
 package com.efedorchenko.gptbot.yandex.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotNull;
@@ -22,7 +22,7 @@ import java.io.Serializable;
 @Getter
 @ToString
 @AllArgsConstructor
-@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class ArtAnswer implements Serializable {
 
     /** Идентификатор запущенного процесса по генерации изображения */

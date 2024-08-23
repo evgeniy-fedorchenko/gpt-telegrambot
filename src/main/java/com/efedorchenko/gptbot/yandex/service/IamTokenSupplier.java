@@ -50,7 +50,7 @@ public class IamTokenSupplier {
         });
 
         if (iamTokenResponse != null) {
-            log.debug("IamToken updated");
+            log.debug("IamToken has been updated");
             IAM_TOKEN = iamTokenResponse.getIamToken();
         }
     }
