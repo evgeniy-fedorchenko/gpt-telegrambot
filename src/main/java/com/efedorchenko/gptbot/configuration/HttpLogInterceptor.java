@@ -1,6 +1,8 @@
 package com.efedorchenko.gptbot.configuration;
 
-import com.efedorchenko.gptbot.aop.MethodLogAspect;
+import com.efedorchenko.gptbot.utils.logging.DataFormatUtils;
+import com.efedorchenko.gptbot.utils.logging.LogUtils;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.Interceptor;
 import okhttp3.Request;
@@ -10,16 +12,19 @@ import okio.Buffer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class HttpLogInterceptor implements Interceptor {
 
     @Value("${logging.max-mess-length}")
     private int maxLength;
+    private final LogUtils logUtils;
 
     /**
      * Метод для логирования http-запросов и получаемых ответов, включая их тела (если метод запроса POST)
@@ -41,14 +46,15 @@ public class HttpLogInterceptor implements Interceptor {
                 if (request.body() != null) {
                     Buffer buffer = new Buffer();
                     request.body().writeTo(buffer);
-                    preparedBody = prepareBodyForLogging(buffer.readUtf8());
+                    String contentType = request.header("Content-Type");
+                    preparedBody = prepareBodyForLogging(buffer.readUtf8(), contentType);
                 }
                 String headers = request.headers().toString().replaceAll("\n", ", ");
 
                 log.trace("\n{}Request line {}: {}\n{}Headers      {}: {}\n{}Request body {}: {}",
-                        BLUE, RESET, request.method() + " " + request.url(),
-                        BLUE, RESET, headers,
-                        BLUE, RESET, preparedBody);
+                        DataFormatUtils.BLUE, DataFormatUtils.RESET, request.method() + " " + request.url(),
+                        DataFormatUtils.BLUE, DataFormatUtils.RESET, headers,
+                        DataFormatUtils.BLUE, DataFormatUtils.RESET, preparedBody);
 
             } catch (IllegalArgumentException ex) {
                 log.warn("Cannot intercept request. request.body() is not UTF-8 encoded. Ex: {}", ex.getMessage());
@@ -66,6 +72,7 @@ public class HttpLogInterceptor implements Interceptor {
         }
 
         ResponseBody responseBody = response.body();
+        String contentType = response.header("Content-Type");
         String bodyAsString = null;
         try {
             if (responseBody != null) {
@@ -73,12 +80,12 @@ public class HttpLogInterceptor implements Interceptor {
             }
             String code = response.code() + " (" + (response.receivedResponseAtMillis() - response.sentRequestAtMillis()) + " ms)";
             String headers = response.headers().toString().replaceAll("\n", ", ");
-            String preparedBody = prepareBodyForLogging(bodyAsString);
+            String preparedBody = prepareBodyForLogging(bodyAsString, contentType);
 
             log.trace("\n{}Status        {}: {}\n{}Headers       {}: {}\n{}Response body {}: {}",
-                    BLUE, RESET, code,
-                    BLUE, RESET, headers,
-                    BLUE, RESET, preparedBody);
+                    DataFormatUtils.BLUE, DataFormatUtils.RESET, code,
+                    DataFormatUtils.BLUE, DataFormatUtils.RESET, headers,
+                    DataFormatUtils.BLUE, DataFormatUtils.RESET, preparedBody);
 
         } catch (IOException ex) {
             log.error("Cannot intercept response body. Maybe it's because of OutOfMemoryError. Ex: {}", ex.getMessage());
@@ -91,21 +98,16 @@ public class HttpLogInterceptor implements Interceptor {
                 : response;
     }
 
-    private @NotNull String prepareBodyForLogging(@Nullable String rawBody) {
+    public @NotNull String prepareBodyForLogging(@Nullable String rawBody, String contentType) {
         if (rawBody == null) {
             return "no body";
         }
-        String temp = MethodLogAspect.excludeBase64(rawBody.replaceAll("\n", ""));
-        return temp.length() > maxLength
-                ? "..." + temp.substring(temp.length() - maxLength)
-                : temp;
+        if (contentType.equals(MediaType.APPLICATION_OCTET_STREAM_VALUE)) {
+            return "<binary_data>";
+        }
+        String temp = DataFormatUtils.excludeBase64(rawBody.replaceAll("\n", ""));
+        return logUtils.shortenString(temp, maxLength);
 
     }
-
-    private static final String RESET = "\u001B[0m";
-    private static final String RED = "\u001B[31m";
-    private static final String GREEN = "\u001B[32m";
-    private static final String YELLOW = "\u001B[33m";
-    private static final String BLUE = "\u001B[34m";
 
 }

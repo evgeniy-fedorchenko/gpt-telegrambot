@@ -1,4 +1,4 @@
-package com.efedorchenko.gptbot.aop;
+package com.efedorchenko.gptbot.utils.logging;
 
 import org.slf4j.event.Level;
 
