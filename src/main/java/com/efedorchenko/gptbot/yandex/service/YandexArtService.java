@@ -1,6 +1,7 @@
 package com.efedorchenko.gptbot.yandex.service;
 
 import com.efedorchenko.gptbot.configuration.OkHttpClientConfiguration;
+import com.efedorchenko.gptbot.configuration.properties.DefaultBotAnswer;
 import com.efedorchenko.gptbot.configuration.properties.YandexProperties;
 import com.efedorchenko.gptbot.data.UserModeRedisService;
 import com.efedorchenko.gptbot.exception.GptTelegramBotException;
@@ -98,6 +99,7 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
     private final RetryTemplate retryTemplate;
     private final YandexProperties yandexProperties;
     private final TelegramExecutor telegramExecutor;
+    private final DefaultBotAnswer defaultBotAnswer;
     private final UserModeRedisService userModeCache;
     private final ExecutorService executorServiceOfVirtual;
 
@@ -153,10 +155,10 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
 
         if (firstResponse.getId() != null) {
             generationProcessMess =
-                    telegramExecutor.sendAndReturn(new SendMessage(chatId, "Принято! Ожидаем завершения"));
+                    telegramExecutor.sendAndReturn(new SendMessage(chatId, defaultBotAnswer.requestAccepted()));
         } else {
             userModeCache.setMode(chatId, Mode.YANDEX_ART);
-            return new SendMessage(chatId, "Бля! Что-то пошло не так, давай по новой");  // todo Кажется, это  проблемы с самой нейронкой
+            return new SendMessage(chatId, defaultBotAnswer.unknownError());
         }
 
         ArtAnswer secondResponse = retryTemplate.execute(context -> {

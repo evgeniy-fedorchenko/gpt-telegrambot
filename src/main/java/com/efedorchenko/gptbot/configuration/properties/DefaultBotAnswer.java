@@ -18,6 +18,7 @@ public class DefaultBotAnswer {
     private static final String COMMANDS_KEY = "commands.";
     private static final String EXCEPTIONS_KEY = "exceptions.";
     private static final String OTHERS_KEY = "others.";
+    public static final String YAART_PROCESS_KEY = "yaart_process.";
 
     @Bean
     private Properties defaultBotAnswers() {
@@ -28,39 +29,39 @@ public class DefaultBotAnswer {
     }
 
     /* ---------- commands ---------- */
-    public String start() {
+    public String startCommand() {
         return defaultBotAnswers().getProperty(COMMANDS_KEY + "start");
     }
-    public String help() {
+    public String helpCommand() {
         return defaultBotAnswers().getProperty(COMMANDS_KEY + "help");
     }
-    public String feedback() {
+    public String feedbackCommand() {
         return defaultBotAnswers().getProperty(COMMANDS_KEY + "feedback");
     }
-    public String yagpt() {
+    public String yagptCommand() {
         return defaultBotAnswers().getProperty(COMMANDS_KEY + "yagpt");
     }
-    public String yaart() {
+    public String yaartCommand() {
         return defaultBotAnswers().getProperty(COMMANDS_KEY + "yaart");
     }
-    public String unknown() {
+    public String unknownCommand() {
         return defaultBotAnswers().getProperty(COMMANDS_KEY + "unknown");
     }
 
     /* ---------- exceptions ---------- */
-    public String illegalState() {
+    public String illegalStateEx() {
         return defaultBotAnswers().getProperty(EXCEPTIONS_KEY + "illegal_state");
     }
-    public String nullPointer() {
+    public String nullPointerEx() {
         return defaultBotAnswers().getProperty(EXCEPTIONS_KEY + "null_pointer");
     }
-    public String retryAttemptNotReady() {
+    public String retryAttemptNotReadyEx() {
         return defaultBotAnswers().getProperty(EXCEPTIONS_KEY + "retry_attempt_not_ready");
     }
-    public String jsonProcessing() {
+    public String jsonProcessingEx() {
         return defaultBotAnswers().getProperty(EXCEPTIONS_KEY + "json_processing");
     }
-    public String otherExs() {
+    public String otherEx() {
         return defaultBotAnswers().getProperty(EXCEPTIONS_KEY + "other_exs");
     }
 
@@ -76,6 +77,14 @@ public class DefaultBotAnswer {
     }
     public String voiceIsLongerThan30s() {
         return defaultBotAnswers().getProperty(OTHERS_KEY + "voice_is_longer_than_30s");
+    }
+
+    /* ---------- yaart process ---------- */
+    public String requestAccepted() {
+        return defaultBotAnswers().getProperty(YAART_PROCESS_KEY + "request_accepted");
+    }
+    public String unknownError() {
+        return defaultBotAnswers().getProperty(YAART_PROCESS_KEY + "unknown_error");
     }
 
 }

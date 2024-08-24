@@ -51,20 +51,20 @@ public class TelegramDistributor {
         this.telegramService = telegramService;
         this.defaultBotAnswer = defaultBotAnswer;
 
-        this.unsupportedCommandReact = chatId -> new SendMessage(chatId, defaultBotAnswer.unknown());
+        this.unsupportedCommandReact = chatId -> new SendMessage(chatId, defaultBotAnswer.unknownCommand());
         this.commandReactMap = Map.of(
-                START.getRepresentation(), chatId -> new SendMessage(chatId, defaultBotAnswer.start()),
-                HELP.getRepresentation(), chatId -> new SendMessage(chatId, defaultBotAnswer.help()),
-                FEEDBACK.getRepresentation(), chatId -> new SendMessage(chatId, defaultBotAnswer.feedback()),
+                START.getRepresentation(), chatId -> new SendMessage(chatId, defaultBotAnswer.startCommand()),
+                HELP.getRepresentation(), chatId -> new SendMessage(chatId, defaultBotAnswer.helpCommand()),
+                FEEDBACK.getRepresentation(), chatId -> new SendMessage(chatId, defaultBotAnswer.feedbackCommand()),
 
                 YA_GPT.getRepresentation(), chatId -> {
                     userModeCache.setMode(chatId, Mode.YANDEX_GPT);
                     historyCache.clean(chatId);
-                    return new SendMessage(chatId, defaultBotAnswer.yagpt());
+                    return new SendMessage(chatId, defaultBotAnswer.yagptCommand());
                 },
                 YA_ART.getRepresentation(), chatId -> {
                     userModeCache.setMode(chatId, Mode.YANDEX_ART);
-                    return new SendMessage(chatId, defaultBotAnswer.yaart());
+                    return new SendMessage(chatId, defaultBotAnswer.yaartCommand());
                 }
         );
     }

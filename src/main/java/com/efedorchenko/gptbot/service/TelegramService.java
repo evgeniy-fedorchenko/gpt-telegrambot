@@ -140,35 +140,35 @@ public class TelegramService {
         switch (thrown) {
             case IllegalStateException ise -> {
                 log.error(NETWORK_MARKER, "IllegalStateException -> Update: {}\nEx: ", update, ise);
-                return new SendMessage(chatId, defaultBotAnswer.illegalState());
+                return new SendMessage(chatId, defaultBotAnswer.illegalStateEx());
             }
             case NullPointerException npe -> {
                 log.error(POWER_MARKER, "NullPointerException -> Update: {}\nEx: ", update, npe);
-                return new SendMessage(chatId, defaultBotAnswer.nullPointer());
+                return new SendMessage(chatId, defaultBotAnswer.nullPointerEx());
             }
 
 //            Картинка не успела сгенериться за отведенные 6 минут
             case RetryAttemptNotReadyException ranre -> {
                 log.warn(RANRE_MARKER, ranre.getMessage(), ranre);
-                return new SendMessage(chatId, defaultBotAnswer.retryAttemptNotReady());
+                return new SendMessage(chatId, defaultBotAnswer.retryAttemptNotReadyEx());
             }
 
             case JsonProcessingException jpe -> {
                 log.error(LOGIC_MARKER, "JsonProcessingException -> Update: {}\nEx: ", update, jpe);
-                return new SendMessage(chatId, defaultBotAnswer.jsonProcessing());
+                return new SendMessage(chatId, defaultBotAnswer.jsonProcessingEx());
             }
             case IOException ioe -> {
                 Thread.dumpStack();   // Maybe this is a OutOfMemoryError. Answer of model is too large
                 log.error(NETWORK_MARKER, "IOException was thrown. Dump of stack is above, maybe. Update: {}.\nEx: ", update, ioe);
-                return new SendMessage(chatId, defaultBotAnswer.otherExs());
+                return new SendMessage(chatId, defaultBotAnswer.otherEx());
             }
             case GptTelegramBotException gtbe -> {
                 log.error(LOGIC_MARKER, gtbe.getMessage(), update, thrown);
-                return new SendMessage(chatId, defaultBotAnswer.otherExs());
+                return new SendMessage(chatId, defaultBotAnswer.otherEx());
             }
             default -> {
                 log.error(LOGIC_MARKER, "Cannot processing update, unexpected exception. Update: {}. Ex: ", update, thrown);
-                return new SendMessage(chatId, defaultBotAnswer.otherExs());
+                return new SendMessage(chatId, defaultBotAnswer.otherEx());
             }
         }
     }
