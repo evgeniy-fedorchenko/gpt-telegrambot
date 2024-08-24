@@ -2,6 +2,7 @@ package com.efedorchenko.gptbot.service;
 
 import com.efedorchenko.gptbot.configuration.properties.DefaultBotAnswer;
 import com.efedorchenko.gptbot.data.UserModeRedisService;
+import com.efedorchenko.gptbot.exception.GptTelegramBotException;
 import com.efedorchenko.gptbot.exception.RetryAttemptNotReadyException;
 import com.efedorchenko.gptbot.telegram.Mode;
 import com.efedorchenko.gptbot.telegram.TelegramBot;
@@ -148,8 +149,7 @@ public class TelegramService {
 
 //            Картинка не успела сгенериться за отведенные 6 минут
             case RetryAttemptNotReadyException ranre -> {
-                log.warn(RANRE_MARKER, ranre.getMessage());
-
+                log.warn(RANRE_MARKER, ranre.getMessage(), ranre);
                 return new SendMessage(chatId, defaultBotAnswer.retryAttemptNotReady());
             }
 
@@ -160,6 +160,10 @@ public class TelegramService {
             case IOException ioe -> {
                 Thread.dumpStack();   // Maybe this is a OutOfMemoryError. Answer of model is too large
                 log.error(NETWORK_MARKER, "IOException was thrown. Dump of stack is above, maybe. Update: {}.\nEx: ", update, ioe);
+                return new SendMessage(chatId, defaultBotAnswer.otherExs());
+            }
+            case GptTelegramBotException gtbe -> {
+                log.error(LOGIC_MARKER, gtbe.getMessage(), update, thrown);
                 return new SendMessage(chatId, defaultBotAnswer.otherExs());
             }
             default -> {
