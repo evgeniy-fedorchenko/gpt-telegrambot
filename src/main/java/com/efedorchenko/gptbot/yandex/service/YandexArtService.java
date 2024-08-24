@@ -1,6 +1,7 @@
 package com.efedorchenko.gptbot.yandex.service;
 
 import com.efedorchenko.gptbot.configuration.OkHttpClientConfiguration;
+import com.efedorchenko.gptbot.configuration.RetryTemplateConfiguration;
 import com.efedorchenko.gptbot.configuration.properties.DefaultBotAnswer;
 import com.efedorchenko.gptbot.configuration.properties.YandexProperties;
 import com.efedorchenko.gptbot.data.UserModeRedisService;
@@ -102,6 +103,7 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
     private final DefaultBotAnswer defaultBotAnswer;
     private final UserModeRedisService userModeCache;
     private final ExecutorService executorServiceOfVirtual;
+    private final RetryTemplateConfiguration retryTemplateConfiguration;
 
     @Override
     public String validate(Message inputMess) {
@@ -162,7 +164,7 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
         }
 
         ArtAnswer secondResponse = retryTemplate.execute(context -> {
-                    if (context.getRetryCount() == 120) { // FIXME 20.08.2024 01:12: юзать константу из пропертей
+                    if (context.getRetryCount() == retryTemplateConfiguration.getMaxAttempts()) {
                         percentReady = 1;
                     }
                     return this.processRetryInvoke(this.retryInvoke(firstResponse.getId()), chatId)
@@ -198,7 +200,6 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
                 return objectMapper.readValue(response.body().string(), ArtAnswer.class);
             }
 
-            // FIXME 18.08.2024 01:07: не обрабатывать здесь, передать дальше
         } catch (JsonProcessingException ex) {
             throw new GptTelegramBotException("Request was successful, but it wasn't possible to deserialize the response into an object of the \"%s\" class. Ex:{}".formatted(ArtAnswer.class), ex);
 
