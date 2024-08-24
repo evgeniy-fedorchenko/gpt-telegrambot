@@ -13,14 +13,6 @@ public class GptTelegramBotApplication {
 		SpringApplication.run(GptTelegramBotApplication.class, args);
 	}
 
-	/*
-	  TODO Release 1.0.0:
-	    1. авторизация для получения логов
-	    2. решить npe в распознавалке, когда длительность больше 30 секунд
-	    3. обработать GptTelegramBotException's
-	    4. решить ексепшены, которые бросает тг от бездействия
-	*/
-
 	// ----- Release 1.0.0 -----
 
 	/*
