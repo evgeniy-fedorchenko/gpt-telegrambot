@@ -5,6 +5,7 @@ import com.efedorchenko.gptbot.telegram.Mode;
 import com.efedorchenko.gptbot.telegram.TelegramDistributor;
 import jakarta.annotation.PostConstruct;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -13,17 +14,18 @@ import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.Set;
 
+@Slf4j
 @Component
 @AllArgsConstructor
 public class UserModeRedisServiceImpl implements UserModeRedisService {
 
-    private final RedisTemplate<String, Mode> redisTemplate;
+    private final RedisTemplate<String, Mode> userModeRedisTemplate;
     private final RedisProperties redisProperties;
 
     @Override
     public Mode getMode(String userChatId) {
-
-        Mode mode = redisTemplate.opsForValue().get(redisProperties.getUserModePrefix() + userChatId);
+        String key = redisProperties.getUserModePrefix() + userChatId;
+        Mode mode = userModeRedisTemplate.opsForValue().get(key);
         if (mode == null) {
             setMode(userChatId, Mode.YANDEX_GPT);
             return Mode.YANDEX_GPT;
@@ -35,8 +37,8 @@ public class UserModeRedisServiceImpl implements UserModeRedisService {
     public void setMode(String userChatId, Mode mode) {
         if (mode != null) {
             String key = redisProperties.getUserModePrefix() + userChatId;
-            redisTemplate.opsForValue().set(key, mode);
-            redisTemplate.expire(key, Duration.of(redisProperties.getUserModeTtlMillis(), ChronoUnit.MILLIS));
+            userModeRedisTemplate.opsForValue().set(key, mode);
+            userModeRedisTemplate.expire(key, Duration.of(redisProperties.getUserModeTtlMillis(), ChronoUnit.MILLIS));
         }
     }
 
@@ -54,9 +56,12 @@ public class UserModeRedisServiceImpl implements UserModeRedisService {
      */
     @PostConstruct
     public void disableYandexArtHold() {
-        Set<String> keys = redisTemplate.keys("*");
+        Set<String> keys = userModeRedisTemplate.keys("*");
         if (keys != null && !keys.isEmpty()) {
-            keys.forEach(key -> redisTemplate.opsForValue().set(key, Mode.YANDEX_ART));
+            keys.stream()
+                    .filter(key -> key.startsWith(redisProperties.getUserModePrefix()))
+                    .filter(key -> userModeRedisTemplate.opsForValue().get(key) == Mode.YANDEX_ART_HOLD)
+                    .forEach(key -> userModeRedisTemplate.opsForValue().set(key, Mode.YANDEX_ART));
         }
     }
 }
