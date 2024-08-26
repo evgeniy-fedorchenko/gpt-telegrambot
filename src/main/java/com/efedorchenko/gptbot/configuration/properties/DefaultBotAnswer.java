@@ -5,6 +5,7 @@ import org.springframework.beans.factory.config.YamlPropertiesFactoryBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
 import java.util.Properties;
@@ -18,7 +19,7 @@ public class DefaultBotAnswer {
     private static final String COMMANDS_KEY = "commands.";
     private static final String EXCEPTIONS_KEY = "exceptions.";
     private static final String OTHERS_KEY = "others.";
-    public static final String YAART_PROCESS_KEY = "yaart_process.";
+    private static final String AI_PROCESS_KEY = "ai_process.";
 
     @Bean
     private Properties defaultBotAnswers() {
@@ -78,13 +79,22 @@ public class DefaultBotAnswer {
     public String voiceIsLongerThan30s() {
         return defaultBotAnswers().getProperty(OTHERS_KEY + "voice_is_longer_than_30s");
     }
+    public String subscribeForUse() {
+        return defaultBotAnswers().getProperty(OTHERS_KEY + "subscribe_for_use");
+    }
 
     /* ---------- yaart process ---------- */
-    public String requestAccepted() {
-        return defaultBotAnswers().getProperty(YAART_PROCESS_KEY + "request_accepted");
+    public String yaartRequestAccepted() {
+        return defaultBotAnswers().getProperty(AI_PROCESS_KEY + "yaart_request_accepted");
     }
     public String unknownError() {
-        return defaultBotAnswers().getProperty(YAART_PROCESS_KEY + "unknown_error");
+        return defaultBotAnswers().getProperty(AI_PROCESS_KEY + "unknown_error");
     }
-
+    public String yagptAnswerOfStatus(HttpStatus errorStatus) {
+        return switch (errorStatus) {   // Switch for scaling
+            case HttpStatus.TOO_MANY_REQUESTS -> defaultBotAnswers().getProperty(AI_PROCESS_KEY + "too_many_requests");
+            case HttpStatus.BAD_GATEWAY -> defaultBotAnswers().getProperty(AI_PROCESS_KEY + "unknown_error");
+            default -> defaultBotAnswers().getProperty(AI_PROCESS_KEY + "unknown_error");
+        };
+    }
 }
