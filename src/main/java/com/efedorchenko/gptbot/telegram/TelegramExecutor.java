@@ -9,6 +9,7 @@ import org.telegram.telegrambots.bots.DefaultBotOptions;
 import org.telegram.telegrambots.meta.api.methods.BotApiMethod;
 import org.telegram.telegrambots.meta.api.methods.GetFile;
 import org.telegram.telegrambots.meta.api.methods.PartialBotApiMethod;
+import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChatMember;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
 import org.telegram.telegrambots.meta.api.methods.send.SendSticker;
@@ -16,6 +17,7 @@ import org.telegram.telegrambots.meta.api.methods.send.SendVoice;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Voice;
+import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMember;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.io.IOException;
@@ -117,6 +119,15 @@ public class TelegramExecutor extends DefaultAbsSender {
         } catch (TelegramApiException | IOException ex) {
             log.error("{} was thrown. Cause: {}", ex.getClass().getSimpleName(), ex.getMessage());
             return new byte[0];
+        }
+    }
+
+    public ChatMember checkSubscribes(String chatId, String s) {
+        GetChatMember getChatMember = new GetChatMember(s, Long.parseLong(chatId));
+        try {
+            return execute(getChatMember);
+        } catch (TelegramApiException e) {
+            throw new RuntimeException(e);
         }
     }
 }

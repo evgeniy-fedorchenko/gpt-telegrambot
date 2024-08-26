@@ -180,5 +180,7 @@ public class TelegramService {
     private static final Marker POWER_MARKER = MarkerFactory.getMarker("POWER");
     private static final Marker NETWORK_MARKER = MarkerFactory.getMarker("NETWORK");
     private static final Marker RANRE_MARKER = MarkerFactory.getMarker("RetryAttemptNotReadyException");
+    public static final Marker FUTURE_CHECK = MarkerFactory.getMarker("CHECK");
+
 
 }

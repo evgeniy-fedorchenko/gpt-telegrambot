@@ -8,11 +8,13 @@ import com.efedorchenko.gptbot.utils.logging.Log;
 import jakarta.annotation.Nullable;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.PartialBotApiMethod;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMember;
 
 import java.io.Serializable;
 import java.util.Map;
@@ -20,6 +22,7 @@ import java.util.function.Function;
 
 import static com.efedorchenko.gptbot.telegram.TelegramDistributor.Command.*;
 
+@Slf4j
 @Component
 public class TelegramDistributor {
 
@@ -42,11 +45,16 @@ public class TelegramDistributor {
     private final UserModeRedisService userModeCache;
     private final TelegramService telegramService;
     private final DefaultBotAnswer defaultBotAnswer;
+    private final TelegramExecutor telegramExecutor;
+
+    private static final String TEST_CHANNEL_FOR_SUB = "@qwerty123456789qwertyqwerty";
+    private static final String CHANNEL_FOR_SUB_CHILDREN = "@neuroncenterchildren";
+    private static final String CHANNEL_FOR_SUB_ADULT = "@neuroncenteradults";
 
     public TelegramDistributor(UserModeRedisService userModeCache,
                                HistoryRedisService historyCache,
                                TelegramService telegramService,
-                               DefaultBotAnswer defaultBotAnswer) {
+                               DefaultBotAnswer defaultBotAnswer, TelegramExecutor telegramExecutor) {
         this.userModeCache = userModeCache;
         this.telegramService = telegramService;
         this.defaultBotAnswer = defaultBotAnswer;
@@ -67,6 +75,7 @@ public class TelegramDistributor {
                     return new SendMessage(chatId, defaultBotAnswer.yaartCommand());
                 }
         );
+        this.telegramExecutor = telegramExecutor;
     }
 
     /**
@@ -83,7 +92,11 @@ public class TelegramDistributor {
         Message inMess = update.getMessage();
         String chatId = String.valueOf(inMess.getChatId());
 
-//        На закрепление сообщения ничего не отвечаем
+//        Проверка подписок на каналы
+        if (!checkSubscribes(chatId)) {   // Кешировать
+            return new SendMessage(chatId, defaultBotAnswer.subscribeForUse());
+        }
+//        На закрепление сообщения ничего не делаем
         if (inMess.getPinnedMessage() != null) {
             return null;
         }
@@ -106,6 +119,37 @@ public class TelegramDistributor {
 
 //        Main processing
         return telegramService.processing(currentMode, update);
+    }
+
+    private boolean checkSubscribes(String chatId) {
+//        Тестовый канал
+        ChatMember chatMember = telegramExecutor.checkSubscribes(chatId, TEST_CHANNEL_FOR_SUB);
+
+//        Проверка реальных каналов
+//        ChatMember adultMember = telegramExecutor.checkSubscribes(chatId, CHANNEL_FOR_SUB_ADULT);
+//        if (!adultMember.getStatus().equals("left") && !adultMember.getStatus().equals("kicked")) {
+//            log.debug(FUTURE_CHECK, "Adult member detected: {}", adultMember);
+//            return true;
+//        } else {
+//            ChatMember childMember = telegramExecutor.checkSubscribes(chatId, CHANNEL_FOR_SUB_CHILDREN);
+//            boolean childMemberDetected =
+//                    !childMember.getStatus().equals("left") && !childMember.getStatus().equals("kicked");
+//            if (childMemberDetected) {
+//                log.debug(FUTURE_CHECK, "Child member detected: {}", adultMember);
+//                return true;
+//            }
+//            return false;
+//        }
+
+        return !chatMember.getStatus().equals("left")
+               && !chatMember.getStatus().equals("kicked");
+
+        /* administrator (администратор канала)
+         *  kicked        (выгнан с канала)
+         *  left          (не подписан/покинул самостоятельно)
+         *  member        (участник канала)
+         *  creator       (создатель канала)
+         *  restricted    (доступ ограничен) */
     }
 
     @Getter
