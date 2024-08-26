@@ -11,6 +11,7 @@ import com.efedorchenko.gptbot.yandex.model.GptRequestBody;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import okhttp3.*;
+import org.slf4j.MDC;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.PartialBotApiMethod;
@@ -75,7 +76,8 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
                 .url(url)
                 .header(HttpHeaders.CONTENT_TYPE, org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + IamTokenSupplier.IAM_TOKEN)
-                .header("x-folder-id", yandexProperties.getFolderId())
+                .header(YandexProperties.YA_RQUID_HEADER_NAME, MDC.get("RqUID"))
+                .header(YandexProperties.FOLDER_ID_HEADER_NAME, yandexProperties.getFolderId())
                 .post(RequestBody.create(serializedBody, OkHttpClientConfiguration.MT_APPLICATION_JSON))
                 .build();
 
