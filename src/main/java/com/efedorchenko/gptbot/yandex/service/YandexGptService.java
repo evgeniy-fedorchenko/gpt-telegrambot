@@ -1,6 +1,7 @@
 package com.efedorchenko.gptbot.yandex.service;
 
 import com.efedorchenko.gptbot.configuration.OkHttpClientConfiguration;
+import com.efedorchenko.gptbot.configuration.properties.DefaultBotAnswer;
 import com.efedorchenko.gptbot.configuration.properties.YandexProperties;
 import com.efedorchenko.gptbot.data.HistoryRedisService;
 import com.efedorchenko.gptbot.service.AiModelService;
@@ -13,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import okhttp3.*;
 import org.slf4j.MDC;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.PartialBotApiMethod;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -31,6 +33,8 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
 
     public static final String SERVICE_NAME = "YandexGptService";
     private static final int MAX_COUNT_SYMBOLS = 3700;
+    private static final long MIN_MILLIS_BETWEEN_REQS = 500L;
+    private static Long exitTime;
 
     private final OkHttpClient httpClient;
     private final ObjectMapper objectMapper;
@@ -39,6 +43,7 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
     private final ExecutorService executorServiceOfVirtual;
 
     private final Object networkLock = new Object();
+    private final DefaultBotAnswer defaultBotAnswer;
 
     @Override
     public String validate(Message inputMess) {
@@ -84,13 +89,31 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
         Response response = null;
         Call call = httpClient.newCall(request);
         try {
-            synchronized (networkLock) {   // Only one request at a time
+
+            /* Яндекс обрабатывает только один запрос в единицу времени. При перерыв между запросами
+               должен составлять минимум MIN_MILLIS_BETWEEN_REQS (количество времени в миллисекундах) */
+            synchronized (networkLock) {
+
+                Long entryTime = System.currentTimeMillis();
+                if (exitTime != null && entryTime - exitTime < MIN_MILLIS_BETWEEN_REQS) {
+                    Thread.sleep(MIN_MILLIS_BETWEEN_REQS - (entryTime - exitTime));
+                }
+
                 response = call.execute();
+
+                exitTime = System.currentTimeMillis();
+                entryTime = null;   // GC help
+            }
+
+            if (response.code() == HttpStatus.TOO_MANY_REQUESTS.value()) {
+                return Optional.of(GptAnswer.builder().errorHttpStatus(HttpStatus.TOO_MANY_REQUESTS).build());
             }
             return response.body() != null
                     ? Optional.of(objectMapper.readValue(response.body().string(), responseType))
                     : Optional.empty();
 
+        } catch (InterruptedException e) {
+            return Optional.of(GptAnswer.builder().errorHttpStatus(HttpStatus.BAD_GATEWAY).build());   // default error answer
         } finally {
             if (response != null) {
                 response.close();
@@ -101,7 +124,13 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
     @Log
     @Override
     public PartialBotApiMethod<? extends Serializable> responseProcess(GptAnswer response, Message sourceMess) {
+
         String chatId = String.valueOf(sourceMess.getChatId());
+        HttpStatus errorHttpStatus = response.getErrorHttpStatus();
+
+        if (errorHttpStatus != null) {
+            return new SendMessage(chatId, defaultBotAnswer.yagptAnswerOfStatus(errorHttpStatus));
+        }
         GptMessageUnit answer = response.getResult().getAlternatives().getLast().getMessage();
 
         CompletableFuture.runAsync(
