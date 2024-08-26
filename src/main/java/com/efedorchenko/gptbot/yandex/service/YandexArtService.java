@@ -160,7 +160,7 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
 
         if (firstResponse.getId() != null) {
             generationProcessMess =
-                    telegramExecutor.sendAndReturn(new SendMessage(chatId, defaultBotAnswer.requestAccepted()));
+                    telegramExecutor.sendAndReturn(new SendMessage(chatId, defaultBotAnswer.yaartRequestAccepted()));
         } else {
             userModeCache.setMode(chatId, Mode.YANDEX_ART);
             return new SendMessage(chatId, defaultBotAnswer.unknownError());
@@ -196,6 +196,8 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
             Request request = new Request.Builder()
                     .url(yandexProperties.getArtModelCompleteUrlPattern().formatted(operationId))
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + IamTokenSupplier.IAM_TOKEN)
+                    .header(YandexProperties.YA_RQUID_HEADER_NAME, MDC.get("RqUID"))
+                    .header(YandexProperties.FOLDER_ID_HEADER_NAME, yandexProperties.getFolderId())
                     .get()
                     .build();
 
