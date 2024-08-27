@@ -3,70 +3,54 @@
     <conversionRule conversionWord="clr" converterClass="org.springframework.boot.logging.logback.ColorConverter"/>
     <conversionRule conversionWord="wEx" converterClass="org.springframework.boot.logging.logback.ExtendedWhitespaceThrowableProxyConverter"/>
 
-    <property name="CONSOLE_LOG_PATTERN" value="%clr(%d{yy-MM-dd HH:mm:ss.SSS}){white,faint} %clr(${LOG_LEVEL_PATTERN:-%5p}) %clr(-){faint} %clr([%11.11t]){faint} [%X{RqUID}] %clr(%-75.75logger{74}){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}"/>
-    <property name="FILE_LOG_PATTERN" value="%d{yy-MM-dd HH:mm:ss.SSS} ${LOG_LEVEL_PATTERN:-%5p} - [%12.12t] %-50.50(%logger{49}.%M) : %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}"/>
-    <property name="APP_LOG_PATTERN" value="%d{yy-MM-dd HH:mm:ss.SSS} ${LOG_LEVEL_PATTERN:-%5p} - [%12.12t] - [%X{RqUID}] %-50.50(%logger{49}.%M) : %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}"/>
+    <!-- %replace([%marker]){'\[\]', ''} -->
+    <property name="CONSOLE_LOG_PATTERN" value="%clr(%d{yy-MM-dd HH:mm:ss.SSS}){white,faint} %clr(${LOG_LEVEL_PATTERN:-%5p}) - [%12.12t] [%X{RqUID}] [%marker] %clr(%-75.75logger{74}){cyan} : %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}"/>
+    <property name="FILE_LOG_PATTERN" value="%d{yy-MM-dd HH:mm:ss.SSS} ${LOG_LEVEL_PATTERN:-%5p} - [%12.12t] [%X{RqUID}] [%marker] %-75.75logger{74} : %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}"/>
 
     <appender name="app" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <encoder>
-            <pattern>${APP_LOG_PATTERN}</pattern>
+            <pattern>${FILE_LOG_PATTERN}</pattern>
         </encoder>
         <file>${LOG_PATH}/app.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
-            <fileNamePattern>${LOG_PATH}/app.log.%i.gz</fileNamePattern>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/app.log.%d{yyyy-HH}.gz</fileNamePattern>
+            <maxHistory>12</maxHistory>
+            <totalSizeCap>6GB</totalSizeCap>
         </rollingPolicy>
-        <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
-            <MaxFileSize>5MB</MaxFileSize>
-        </triggeringPolicy>
     </appender>
 
-    <appender name="spring" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <appender name="warn-error" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <encoder>
             <pattern>${FILE_LOG_PATTERN}</pattern>
         </encoder>
-        <file>${LOG_PATH}/spring.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
-            <fileNamePattern>${LOG_PATH}/spring.log.%i.gz</fileNamePattern>
-        </rollingPolicy>
-        <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
-            <MaxFileSize>10MB</MaxFileSize>
-        </triggeringPolicy>
-    </appender>
-
-    <appender name="exception-handler" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <encoder>
-            <pattern>${APP_LOG_PATTERN}</pattern>
-        </encoder>
+        <file>${LOG_PATH}/warn-error.log</file>
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
-            <level>ERROR</level>
+            <level>WARN</level>
         </filter>
-        <file>${LOG_PATH}/exceptions.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
-            <fileNamePattern>${LOG_PATH}/exceptions.log.%i.gz</fileNamePattern>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/warn-error.log.%d{yyyy-HH}.gz</fileNamePattern>
+            <maxHistory>12</maxHistory>
+            <totalSizeCap>2GB</totalSizeCap>
         </rollingPolicy>
-        <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
-            <MaxFileSize>10MB</MaxFileSize>
-        </triggeringPolicy>
     </appender>
 
-    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+    <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>${CONSOLE_LOG_PATTERN}</pattern>
             <charset>utf8</charset>
         </encoder>
     </appender>
 
-    <logger name="com.efedorchenko.gptbot" level="TRACE">
+    <logger name="root" level="TRACE">
         <appender-ref ref="app"/>
     </logger>
 
-    <logger name="org.springframework" level="INFO">
-        <appender-ref ref="spring"/>
+    <logger name="warn-error-logger" level="WARN">
+        <appender-ref ref="warn-error"/>
     </logger>
 
     <root level="INFO">
-        <appender-ref ref="CONSOLE"/>
-        <appender-ref ref="exception-handler"/>
+        <appender-ref ref="console"/>
     </root>
 
 </configuration>
