@@ -1,6 +1,7 @@
 package com.efedorchenko.gptbot.configuration.properties;
 
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.config.YamlPropertiesFactoryBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.io.Resource;
@@ -11,11 +12,15 @@ import org.springframework.stereotype.Component;
 import java.util.Properties;
 
 @Component
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class DefaultBotAnswer {
+
+    @Value("${app.version}")
+    private String appVersion;
 
     private final ResourceLoader resourceLoader;
 
+    private static final String ANSWERS_LOCATION = "classpath:default-bot-answers.yml";
     private static final String COMMANDS_KEY = "commands.";
     private static final String EXCEPTIONS_KEY = "exceptions.";
     private static final String OTHERS_KEY = "others.";
@@ -24,7 +29,7 @@ public class DefaultBotAnswer {
     @Bean
     private Properties defaultBotAnswers() {
         YamlPropertiesFactoryBean yaml = new YamlPropertiesFactoryBean();
-        Resource resource = resourceLoader.getResource("classpath:default-bot-answers.yml");
+        Resource resource = resourceLoader.getResource(ANSWERS_LOCATION);
         yaml.setResources(resource);
         return yaml.getObject();
     }
@@ -34,7 +39,8 @@ public class DefaultBotAnswer {
         return defaultBotAnswers().getProperty(COMMANDS_KEY + "start");
     }
     public String helpCommand() {
-        return defaultBotAnswers().getProperty(COMMANDS_KEY + "help");
+        return defaultBotAnswers().getProperty(COMMANDS_KEY + "help").formatted(appVersion);
+
     }
     public String feedbackCommand() {
         return defaultBotAnswers().getProperty(COMMANDS_KEY + "feedback");
@@ -70,9 +76,6 @@ public class DefaultBotAnswer {
     public String invalidDataFormat() {
         return defaultBotAnswers().getProperty(OTHERS_KEY + "invalid_data_format");
     }
-    public String artGenProcessing() {
-        return defaultBotAnswers().getProperty(OTHERS_KEY + "art_gen_processing");
-    }
     public String couldNotRecognizeVoice() {
         return defaultBotAnswers().getProperty(OTHERS_KEY + "could_not_recognize_voice");
     }
@@ -83,9 +86,12 @@ public class DefaultBotAnswer {
         return defaultBotAnswers().getProperty(OTHERS_KEY + "subscribe_for_use");
     }
 
-    /* ---------- yaart process ---------- */
+    /* ---------- ai process ---------- */
     public String yaartRequestAccepted() {
         return defaultBotAnswers().getProperty(AI_PROCESS_KEY + "yaart_request_accepted");
+    }
+    public String artGenProcessing() {
+        return defaultBotAnswers().getProperty(OTHERS_KEY + "art_gen_processing");
     }
     public String unknownError() {
         return defaultBotAnswers().getProperty(AI_PROCESS_KEY + "unknown_error");
@@ -96,5 +102,8 @@ public class DefaultBotAnswer {
             case HttpStatus.BAD_GATEWAY -> defaultBotAnswers().getProperty(AI_PROCESS_KEY + "unknown_error");
             default -> defaultBotAnswers().getProperty(AI_PROCESS_KEY + "unknown_error");
         };
+    }
+    public String yaartBadPrompt() {
+        return defaultBotAnswers().getProperty(AI_PROCESS_KEY + "yaart_bad_prompt");
     }
 }

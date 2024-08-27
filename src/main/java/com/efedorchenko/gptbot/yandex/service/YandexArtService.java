@@ -70,12 +70,9 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
     );
 
     /**
-     * Дефолтный ответ бота, в случае, если нейросеть отказалась генерировать изображение по заданному промпту по
-     * неизвестной причине. Известные причины (и соотносящиеся с ними ответы бота) определены в карте
-     * {@link YandexArtService#FILED_MODEL_ANSWER_MAP}
+     * Максимально допустимое количество символов во входящем промпте
      */
-    private static final String DEFAULT_FILED_MODEL_ANSWER_MAP_VALUE = "Прости, но нейросеть отказалась генерировать изображение по такому промпту, попробуй как-нибудь изменить его";
-    private static final int MAX_COUNT_SYMBOLS = 500;
+     private static final int MAX_COUNT_SYMBOLS = 500;
 
     /**
      * Счетчик процентов. Показывает прогресс генерации изображения. На самом деле не имеет связи с процессом
@@ -245,7 +242,7 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
         log.error("Filed generate image. Prompt: {}. user: {}", sourceMess.getText(), sourceMess.getChatId());
         return new SendMessage(
                 String.valueOf(sourceMess.getChatId()),
-                FILED_MODEL_ANSWER_MAP.getOrDefault(completedAnswer.getErrorDisc(), DEFAULT_FILED_MODEL_ANSWER_MAP_VALUE)
+                FILED_MODEL_ANSWER_MAP.getOrDefault(completedAnswer.getErrorDisc(), defaultBotAnswer.yaartBadPrompt())
         );
     }
 
