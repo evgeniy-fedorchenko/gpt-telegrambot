@@ -1,6 +1,6 @@
 package com.efedorchenko.gptbot.configuration;
 
-import com.efedorchenko.gptbot.utils.logging.DataFormatUtils;
+import com.efedorchenko.gptbot.utils.DataFormatUtils;
 import com.efedorchenko.gptbot.utils.logging.LogUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

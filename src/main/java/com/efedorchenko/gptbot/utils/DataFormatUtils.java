@@ -1,4 +1,4 @@
-package com.efedorchenko.gptbot.utils.logging;
+package com.efedorchenko.gptbot.utils;
 
 import org.springframework.stereotype.Component;
 

@@ -15,8 +15,6 @@ import com.efedorchenko.gptbot.yandex.service.YandexArtService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Marker;
-import org.slf4j.MarkerFactory;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.PartialBotApiMethod;
@@ -31,6 +29,8 @@ import java.io.Serializable;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.*;
+
+import static com.efedorchenko.gptbot.utils.logging.LogUtils.*;
 
 @Slf4j
 @Component
@@ -172,15 +172,5 @@ public class TelegramService {
             }
         }
     }
-
-
-//    Маркеты для log.error
-
-    private static final Marker LOGIC_MARKER = MarkerFactory.getMarker("LOGIC");
-    private static final Marker POWER_MARKER = MarkerFactory.getMarker("POWER");
-    private static final Marker NETWORK_MARKER = MarkerFactory.getMarker("NETWORK");
-    private static final Marker RANRE_MARKER = MarkerFactory.getMarker("RetryAttemptNotReadyException");
-    public static final Marker FUTURE_CHECK = MarkerFactory.getMarker("CHECK");
-
 
 }

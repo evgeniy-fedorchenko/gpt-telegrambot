@@ -26,6 +26,8 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 
+import static com.efedorchenko.gptbot.utils.logging.LogUtils.LOGIC_MARKER;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -92,7 +94,7 @@ public class SpeechRecogniser {
                 }
 
             } catch (IOException e) {
-                log.error("Exception occurred when writing an unrecognized voice to a file: {}", e.getMessage());
+                log.error(LOGIC_MARKER, "Exception occurred when writing an unrecognized voice to a file: {}", e.getMessage());
             }
 
         }, executorServiceOfVirtual);

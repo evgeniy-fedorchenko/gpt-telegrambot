@@ -1,10 +1,13 @@
 package com.efedorchenko.gptbot.utils.logging;
 
+import com.efedorchenko.gptbot.utils.DataFormatUtils;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
+import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
 import org.slf4j.event.Level;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
@@ -19,6 +22,12 @@ import java.util.function.BiConsumer;
 @RequiredArgsConstructor
 public class LogUtils {
 
+
+    public static final Marker LOGIC_MARKER = MarkerFactory.getMarker("LOGIC");
+    public static final Marker POWER_MARKER = MarkerFactory.getMarker("POWER");
+    public static final Marker NETWORK_MARKER = MarkerFactory.getMarker("NETWORK");
+    public static final Marker RANRE_MARKER = MarkerFactory.getMarker("RetryAttemptNotReadyException");
+    public static final Marker FUTURE_CHECK = MarkerFactory.getMarker("CHECK");
 
     private final ObjectMapper objectMapper;
 
@@ -72,7 +81,7 @@ public class LogUtils {
         try {
             return DataFormatUtils.excludeBase64(objectMapper.writeValueAsString(object));
         } catch (JsonProcessingException ex) {
-            log.error("Cannot log param as aspect. ParamsFuture are filed. Ex: {}", ex.getMessage());
+            log.error(LOGIC_MARKER, "Cannot log param as aspect. ParamsFuture are filed. Ex: {}", ex.getMessage());
             return "Cannot log param as aspect. ParamsFuture are filed. Ex: " + ex.getMessage();
         }
     }
@@ -88,7 +97,7 @@ public class LogUtils {
             return String.join(", ", strings);
 
         } catch (InterruptedException | ExecutionException | JsonProcessingException ex) {
-            log.error("Cannot log param as aspect. ParamsFuture are filed. Ex: {}", ex.getMessage());
+            log.error(LOGIC_MARKER, "Cannot log param as aspect. ParamsFuture are filed. Ex: {}", ex.getMessage());
             return "Cannot log param as aspect. ParamsFuture are filed. Ex: " + ex.getMessage();
         }
     }
