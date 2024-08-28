@@ -54,17 +54,19 @@ public class SpeechRecogniser {
             String string = response.body().string();
             SpeechKitAnswer recAnswer = objectMapper.readValue(string, SpeechKitAnswer.class);
 
+//            Возвращается сам объект, чтобы выше достать errorMessage
             if (recAnswer.getResult() == null) {
                 return Optional.of(recAnswer);
             }
             if (recAnswer.getResult().isEmpty()) {
+                log.warn("Unrecognized voice message has been detected, Saving");
                 saveUnrecognizedVoiceAsync(bytes);
                 return Optional.empty();
             }
             return Optional.of(recAnswer);
 
         } catch (IOException ex) {
-            log.error("Ошибка распознавания. Ex: {}", ex.getMessage());
+            log.error("Unexpected http-response from the SpeechKit network. Ex: {}", ex.getMessage());
             return Optional.empty();
         }
     }
@@ -91,6 +93,7 @@ public class SpeechRecogniser {
                 }
                 try (FileOutputStream fos = new FileOutputStream(filePath)) {
                     fos.write(bytes);
+                    log.debug("Unrecognized voice message has been saved");
                 }
 
             } catch (IOException e) {

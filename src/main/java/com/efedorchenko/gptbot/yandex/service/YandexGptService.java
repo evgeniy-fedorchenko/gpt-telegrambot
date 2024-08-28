@@ -11,6 +11,7 @@ import com.efedorchenko.gptbot.yandex.model.GptMessageUnit;
 import com.efedorchenko.gptbot.yandex.model.GptRequestBody;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 import org.slf4j.MDC;
 import org.springframework.http.HttpHeaders;
@@ -27,13 +28,16 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 
+import static com.efedorchenko.gptbot.utils.logging.LogUtils.FUTURE_CHECK;
+
+@Slf4j
 @RequiredArgsConstructor
 @Component(YandexGptService.SERVICE_NAME)
 public class YandexGptService implements AiModelService<GptRequestBody, GptAnswer> {
 
     public static final String SERVICE_NAME = "YandexGptService";
     private static final int MAX_COUNT_SYMBOLS = 3700;
-    private static final long MIN_MILLIS_BETWEEN_REQS = 500L;
+    private static final long REQUIRED_MILLIS_BETWEEN_REQS = 500L;
     private static Long exitTime;
 
     private final OkHttpClient httpClient;
@@ -95,8 +99,13 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
             synchronized (networkLock) {
 
                 Long entryTime = System.currentTimeMillis();
-                if (exitTime != null && entryTime - exitTime < MIN_MILLIS_BETWEEN_REQS) {
-                    Thread.sleep(MIN_MILLIS_BETWEEN_REQS - (entryTime - exitTime));
+                if (exitTime != null) {
+                    long timeDifference = entryTime - exitTime;
+                    if (timeDifference < REQUIRED_MILLIS_BETWEEN_REQS) {
+                        long expectationMillis = REQUIRED_MILLIS_BETWEEN_REQS - timeDifference;
+                        log.warn(FUTURE_CHECK, "Request queue detected. expectation: {}", expectationMillis);
+                        Thread.sleep(expectationMillis);
+                    }
                 }
 
                 response = call.execute();
@@ -121,7 +130,7 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
         }
     }
 
-    @Log
+    @Log(result = false)
     @Override
     public PartialBotApiMethod<? extends Serializable> responseProcess(GptAnswer response, Message sourceMess) {
 
