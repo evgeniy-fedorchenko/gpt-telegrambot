@@ -41,16 +41,17 @@
         </encoder>
     </appender>
 
-    <logger name="root" level="TRACE">
+    <logger name="com.efedorchenko.gptbot" level="TRACE" additivity="false">
+        <appender-ref ref="console"/>
         <appender-ref ref="app"/>
-    </logger>
-
-    <logger name="warn-error-logger" level="WARN">
         <appender-ref ref="warn-error"/>
     </logger>
 
     <root level="INFO">
         <appender-ref ref="console"/>
+        <appender-ref ref="app"/>
+        <appender-ref ref="warn-error"/>
     </root>
+
 
 </configuration>
