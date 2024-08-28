@@ -91,7 +91,7 @@ public class DefaultBotAnswer {
         return defaultBotAnswers().getProperty(AI_PROCESS_KEY + "yaart_request_accepted");
     }
     public String artGenProcessing() {
-        return defaultBotAnswers().getProperty(OTHERS_KEY + "art_gen_processing");
+        return defaultBotAnswers().getProperty(AI_PROCESS_KEY + "art_gen_processing");
     }
     public String unknownError() {
         return defaultBotAnswers().getProperty(AI_PROCESS_KEY + "unknown_error");
@@ -99,7 +99,7 @@ public class DefaultBotAnswer {
     public String yagptAnswerOfStatus(HttpStatus errorStatus) {
         return switch (errorStatus) {   // Switch for scaling
             case HttpStatus.TOO_MANY_REQUESTS -> defaultBotAnswers().getProperty(AI_PROCESS_KEY + "too_many_requests");
-            case HttpStatus.BAD_GATEWAY -> defaultBotAnswers().getProperty(AI_PROCESS_KEY + "unknown_error");
+            case HttpStatus.BAD_GATEWAY -> this.unknownError();
             default -> defaultBotAnswers().getProperty(AI_PROCESS_KEY + "unknown_error");
         };
     }
