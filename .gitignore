@@ -37,3 +37,4 @@ build/
 
 env/
 /logs/
+/release-plans.txt

@@ -9,6 +9,7 @@ import org.telegram.telegrambots.bots.DefaultBotOptions;
 import org.telegram.telegrambots.meta.api.methods.BotApiMethod;
 import org.telegram.telegrambots.meta.api.methods.GetFile;
 import org.telegram.telegrambots.meta.api.methods.PartialBotApiMethod;
+import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChatMember;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
 import org.telegram.telegrambots.meta.api.methods.send.SendSticker;
@@ -16,11 +17,14 @@ import org.telegram.telegrambots.meta.api.methods.send.SendVoice;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Voice;
+import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMember;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
+
+import static com.efedorchenko.gptbot.utils.logging.LogUtils.LOGIC_MARKER;
 
 @Slf4j
 @Component
@@ -58,7 +62,7 @@ public class TelegramExecutor extends DefaultAbsSender {
                 case BotApiMethod<? extends Serializable> other -> execute(other);
 
                 default -> {
-                    log.error("Unexpected value to DefaultAbsSender.execute(): {}", method.getClass());
+                    log.error(LOGIC_MARKER, "Unexpected value to DefaultAbsSender.execute(): {}", method.getClass());
                     suc = false;
                 }
             }
@@ -71,24 +75,24 @@ public class TelegramExecutor extends DefaultAbsSender {
                     mess.enableMarkdownV2(false);
                     execute(mess);
 
-                    log.warn("Markdown disable. Ex:{}", firstEx.getMessage());
+                    log.warn(LOGIC_MARKER, "Markdown disable. Ex:{}", firstEx.getMessage());
                     return true;
                 }
                 if (method instanceof EditMessageText edit) {
                     edit.enableMarkdown(false);
                     execute(edit);
 
-                    log.warn("Markdown disable. Ex: {}", firstEx.getMessage());
+                    log.warn(LOGIC_MARKER, "Markdown disable. Ex: {}", firstEx.getMessage());
                     return true;
                 }
 
 //            epic fail
             } catch (TelegramApiException secondEx) {
-                log.error("TelegramApiException was thrown. Cannot send text messages with markdown and without it. Mess: {}\n\nExes:\n\nFirst(with md): {}\n\nSecond(without md):", method, firstEx, secondEx);
+                log.error(LOGIC_MARKER, "TelegramApiException was thrown. Cannot send text messages with markdown and without it. Mess: {}\n\nExes:\n\nFirst(with md): {}\n\nSecond(without md):", method, firstEx, secondEx);
                 return false;
             }
 
-            log.error("TelegramApiException was thrown. Cannot send this object: {}, ex:", method, firstEx);
+            log.error(LOGIC_MARKER, "TelegramApiException was thrown. Cannot send this object: {}, ex:", method, firstEx);
             return false;
         }
     }
@@ -104,7 +108,7 @@ public class TelegramExecutor extends DefaultAbsSender {
         try {
             return execute(messToSend);
         } catch (TelegramApiException ex) {
-            log.error("TelegramApiException was thrown. Cause: ", ex);
+            log.error(LOGIC_MARKER, "TelegramApiException was thrown. Cause: ", ex);
         }
         return null;
     }
@@ -115,8 +119,17 @@ public class TelegramExecutor extends DefaultAbsSender {
             return is.readAllBytes();
 
         } catch (TelegramApiException | IOException ex) {
-            log.error("{} was thrown. Cause: {}", ex.getClass().getSimpleName(), ex.getMessage());
+            log.error(LOGIC_MARKER, "{} was thrown. Cause: {}", ex.getClass().getSimpleName(), ex.getMessage());
             return new byte[0];
+        }
+    }
+
+    public ChatMember checkSubscribes(String chatId, String s) {
+        GetChatMember getChatMember = new GetChatMember(s, Long.parseLong(chatId));
+        try {
+            return execute(getChatMember);
+        } catch (TelegramApiException e) {
+            throw new RuntimeException(e);
         }
     }
 }

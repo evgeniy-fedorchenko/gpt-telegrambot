@@ -20,7 +20,7 @@ public class BotUserService {
     @Scheduled(cron = "0 0 0 * * *", zone = resetDailyMetricsTZ)   // Каждый день в полночь
     public void resetDailyMetrics() {
         botUserRepository.resetDailyMetrics();
-        log.info("Successfully reset daily metrics");
+        log.info("Daily metrics have been reset");
     }
 
 }

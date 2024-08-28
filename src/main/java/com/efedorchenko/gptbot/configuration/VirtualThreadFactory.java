@@ -6,6 +6,7 @@ import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.User;
 
+import java.util.UUID;
 import java.util.concurrent.ThreadFactory;
 
 @Component
@@ -17,10 +18,11 @@ public class VirtualThreadFactory implements ThreadFactory {
         String rquid = MDC.get("RqUID");
         if (rquid == null) {
             User user = TelegramBot.localUser.get();
-            rquid = user == null ? "system" : System.currentTimeMillis() + "-" + user.getId();
+            String shortUuid = UUID.randomUUID().toString().substring(0, 14);
+            rquid = shortUuid + (user == null ? "system" : user.getId());
         }
 
-        String finalRquid = rquid;
+        final String finalRquid = rquid;
         Runnable decorated = () -> {
             MDC.put("RqUID", finalRquid);
             r.run();

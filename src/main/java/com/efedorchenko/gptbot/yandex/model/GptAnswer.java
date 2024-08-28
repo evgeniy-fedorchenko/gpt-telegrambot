@@ -1,10 +1,13 @@
 package com.efedorchenko.gptbot.yandex.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import jakarta.validation.constraints.NotNull;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import jakarta.annotation.Nullable;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.ToString;
+import org.springframework.http.HttpStatus;
 
 import java.io.Serializable;
 import java.util.List;
@@ -14,13 +17,21 @@ import java.util.List;
  * Этот объект представляет собой обертку над объектом {@link Result}, который содержит все данные по ответу
  */
 @Getter
+@Builder
 @ToString
 @AllArgsConstructor(onConstructor_ = @JsonCreator)
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class GptAnswer implements Serializable {
 
-    /** Целевой класс ответа, содержащий все необходимую информацию*/
-    @NotNull
+    /** Целевой класс ответа, содержащий все необходимую информацию */
     private final Result result;
+
+    /**
+     * Поле не предусмотрено моделью Яндекса. В случае ошибки запроса на получение этого объекта в это поле руками
+     * будет установлен соответсвующий статус ответа для последующей обработки методами-обработчиками ответа
+     */
+    @Nullable
+    private final HttpStatus errorHttpStatus;
 
     /**
      * Целевой класс ответа модели, содержащий все информацию об ответе

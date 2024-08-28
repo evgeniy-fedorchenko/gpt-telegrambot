@@ -1,6 +1,8 @@
 package com.efedorchenko.gptbot.yandex.service;
 
 import com.efedorchenko.gptbot.configuration.OkHttpClientConfiguration;
+import com.efedorchenko.gptbot.configuration.RetryTemplateConfiguration;
+import com.efedorchenko.gptbot.configuration.properties.DefaultBotAnswer;
 import com.efedorchenko.gptbot.configuration.properties.YandexProperties;
 import com.efedorchenko.gptbot.data.UserModeRedisService;
 import com.efedorchenko.gptbot.exception.GptTelegramBotException;
@@ -20,6 +22,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import org.slf4j.MDC;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -67,12 +70,9 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
     );
 
     /**
-     * Дефолтный ответ бота, в случае, если нейросеть отказалась генерировать изображение по заданному промпту по
-     * неизвестной причине. Известные причины (и соотносящиеся с ними ответы бота) определены в карте
-     * {@link YandexArtService#FILED_MODEL_ANSWER_MAP}
+     * Максимально допустимое количество символов во входящем промпте
      */
-    private static final String DEFAULT_FILED_MODEL_ANSWER_MAP_VALUE = "Прости, но нейросеть отказалась генерировать изображение по такому промпту, попробуй как-нибудь изменить его";
-    private static final int MAX_COUNT_SYMBOLS = 500;
+     private static final int MAX_COUNT_SYMBOLS = 500;
 
     /**
      * Счетчик процентов. Показывает прогресс генерации изображения. На самом деле не имеет связи с процессом
@@ -98,8 +98,10 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
     private final RetryTemplate retryTemplate;
     private final YandexProperties yandexProperties;
     private final TelegramExecutor telegramExecutor;
+    private final DefaultBotAnswer defaultBotAnswer;
     private final UserModeRedisService userModeCache;
     private final ExecutorService executorServiceOfVirtual;
+    private final RetryTemplateConfiguration retryTemplateConfiguration;
 
     @Override
     public String validate(Message inputMess) {
@@ -131,6 +133,8 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
                 .url(url)
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + IamTokenSupplier.IAM_TOKEN)
+                .header(YandexProperties.YA_RQUID_HEADER_NAME, MDC.get("RqUID"))
+                .header(YandexProperties.FOLDER_ID_HEADER_NAME, yandexProperties.getFolderId())
                 .post(RequestBody.create(serializedBody, OkHttpClientConfiguration.MT_APPLICATION_JSON))
                 .build();
 
@@ -153,14 +157,14 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
 
         if (firstResponse.getId() != null) {
             generationProcessMess =
-                    telegramExecutor.sendAndReturn(new SendMessage(chatId, "Принято! Ожидаем завершения"));
+                    telegramExecutor.sendAndReturn(new SendMessage(chatId, defaultBotAnswer.yaartRequestAccepted()));
         } else {
             userModeCache.setMode(chatId, Mode.YANDEX_ART);
-            return new SendMessage(chatId, "Бля! Что-то пошло не так, давай по новой");  // todo Кажется, это  проблемы с самой нейронкой
+            return new SendMessage(chatId, defaultBotAnswer.unknownError());
         }
 
         ArtAnswer secondResponse = retryTemplate.execute(context -> {
-                    if (context.getRetryCount() == 120) { // FIXME 20.08.2024 01:12: юзать константу из пропертей
+                    if (context.getRetryCount() == retryTemplateConfiguration.getMaxAttempts()) {
                         percentReady = 1;
                     }
                     return this.processRetryInvoke(this.retryInvoke(firstResponse.getId()), chatId)
@@ -189,6 +193,8 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
             Request request = new Request.Builder()
                     .url(yandexProperties.getArtModelCompleteUrlPattern().formatted(operationId))
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + IamTokenSupplier.IAM_TOKEN)
+                    .header(YandexProperties.YA_RQUID_HEADER_NAME, MDC.get("RqUID"))
+                    .header(YandexProperties.FOLDER_ID_HEADER_NAME, yandexProperties.getFolderId())
                     .get()
                     .build();
 
@@ -196,7 +202,6 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
                 return objectMapper.readValue(response.body().string(), ArtAnswer.class);
             }
 
-            // FIXME 18.08.2024 01:07: не обрабатывать здесь, передать дальше
         } catch (JsonProcessingException ex) {
             throw new GptTelegramBotException("Request was successful, but it wasn't possible to deserialize the response into an object of the \"%s\" class. Ex:{}".formatted(ArtAnswer.class), ex);
 
@@ -237,7 +242,7 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
         log.error("Filed generate image. Prompt: {}. user: {}", sourceMess.getText(), sourceMess.getChatId());
         return new SendMessage(
                 String.valueOf(sourceMess.getChatId()),
-                FILED_MODEL_ANSWER_MAP.getOrDefault(completedAnswer.getErrorDisc(), DEFAULT_FILED_MODEL_ANSWER_MAP_VALUE)
+                FILED_MODEL_ANSWER_MAP.getOrDefault(completedAnswer.getErrorDisc(), defaultBotAnswer.yaartBadPrompt())
         );
     }
 

@@ -2,18 +2,19 @@ package com.efedorchenko.gptbot.service;
 
 import com.efedorchenko.gptbot.configuration.properties.DefaultBotAnswer;
 import com.efedorchenko.gptbot.data.UserModeRedisService;
+import com.efedorchenko.gptbot.exception.GptTelegramBotException;
 import com.efedorchenko.gptbot.exception.RetryAttemptNotReadyException;
 import com.efedorchenko.gptbot.telegram.Mode;
 import com.efedorchenko.gptbot.telegram.TelegramBot;
 import com.efedorchenko.gptbot.telegram.TelegramExecutor;
 import com.efedorchenko.gptbot.utils.logging.Log;
+import com.efedorchenko.gptbot.yandex.model.SpeechKitAnswer;
+import com.efedorchenko.gptbot.yandex.model.VoiceRecResult;
 import com.efedorchenko.gptbot.yandex.service.SpeechRecogniser;
 import com.efedorchenko.gptbot.yandex.service.YandexArtService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Marker;
-import org.slf4j.MarkerFactory;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.PartialBotApiMethod;
@@ -21,12 +22,15 @@ import org.telegram.telegrambots.meta.api.methods.send.SendChatAction;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.Voice;
 
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.*;
+
+import static com.efedorchenko.gptbot.utils.logging.LogUtils.*;
 
 @Slf4j
 @Component
@@ -62,13 +66,13 @@ public class TelegramService {
 
         try {
             AiModelService<REQ, RESP> aiModelService = getAiModelService(currentMode);
+
             if (inMess.hasVoice()) {
-                byte[] voiceBytes = telegramExecutor.downloadVoice(inMess.getVoice());
-                Optional<String> recognizeOpt = speechRecogniser.recognize(voiceBytes);
-                if (recognizeOpt.isEmpty()) {
-                    return new SendMessage(chatId, defaultBotAnswer.couldNotRecognizeVoice());
+                VoiceRecResult voiceRecResult = recogniseVoice(inMess.getVoice());
+                if (voiceRecResult.getAnswerToErrorMessage() != null) {
+                    return new SendMessage(chatId, voiceRecResult.getAnswerToErrorMessage());
                 }
-                inMess.setText(recognizeOpt.get());
+                inMess.setText(voiceRecResult.getRecognizedMessage());
             }
 
             inMess.setText(aiModelService.validate(inMess));
@@ -90,6 +94,23 @@ public class TelegramService {
                 userModeCache.setMode(chatId, Mode.YANDEX_ART);
             }
         }
+    }
+
+    private VoiceRecResult recogniseVoice(Voice voice) {
+
+        if (voice.getDuration() >= 30) {
+            return VoiceRecResult.builder().answerToErrorMessage(defaultBotAnswer.voiceIsLongerThan30s()).build();
+        }
+        byte[] voiceBytes = telegramExecutor.downloadVoice(voice);
+        Optional<SpeechKitAnswer> recognizeOpt = speechRecogniser.doRecognize(voiceBytes);
+        if (recognizeOpt.isEmpty()) {
+            return VoiceRecResult.builder().answerToErrorMessage(defaultBotAnswer.couldNotRecognizeVoice()).build();
+        }
+        SpeechKitAnswer recognized = recognizeOpt.get();
+        if (recognized.getErrorMessage() != null) {
+            return VoiceRecResult.builder().answerToErrorMessage(recognized.getErrorMessage()).build();
+        }
+        return VoiceRecResult.builder().recognizedMessage(recognized.getResult()).build();
     }
 
     @SuppressWarnings("unchecked")
@@ -119,42 +140,37 @@ public class TelegramService {
         switch (thrown) {
             case IllegalStateException ise -> {
                 log.error(NETWORK_MARKER, "IllegalStateException -> Update: {}\nEx: ", update, ise);
-                return new SendMessage(chatId, defaultBotAnswer.illegalState());
+                return new SendMessage(chatId, defaultBotAnswer.illegalStateEx());
             }
             case NullPointerException npe -> {
                 log.error(POWER_MARKER, "NullPointerException -> Update: {}\nEx: ", update, npe);
-                return new SendMessage(chatId, defaultBotAnswer.nullPointer());
+                return new SendMessage(chatId, defaultBotAnswer.nullPointerEx());
             }
 
 //            Картинка не успела сгенериться за отведенные 6 минут
             case RetryAttemptNotReadyException ranre -> {
-                log.warn(RANRE_MARKER, ranre.getMessage());
-
-                return new SendMessage(chatId, defaultBotAnswer.retryAttemptNotReady());
+                log.warn(RANRE_MARKER, ranre.getMessage(), ranre);
+                return new SendMessage(chatId, defaultBotAnswer.retryAttemptNotReadyEx());
             }
 
             case JsonProcessingException jpe -> {
                 log.error(LOGIC_MARKER, "JsonProcessingException -> Update: {}\nEx: ", update, jpe);
-                return new SendMessage(chatId, defaultBotAnswer.jsonProcessing());
+                return new SendMessage(chatId, defaultBotAnswer.jsonProcessingEx());
             }
             case IOException ioe -> {
                 Thread.dumpStack();   // Maybe this is a OutOfMemoryError. Answer of model is too large
                 log.error(NETWORK_MARKER, "IOException was thrown. Dump of stack is above, maybe. Update: {}.\nEx: ", update, ioe);
-                return new SendMessage(chatId, defaultBotAnswer.otherExs());
+                return new SendMessage(chatId, defaultBotAnswer.otherEx());
+            }
+            case GptTelegramBotException gtbe -> {
+                log.error(LOGIC_MARKER, gtbe.getMessage(), update, thrown);
+                return new SendMessage(chatId, defaultBotAnswer.otherEx());
             }
             default -> {
                 log.error(LOGIC_MARKER, "Cannot processing update, unexpected exception. Update: {}. Ex: ", update, thrown);
-                return new SendMessage(chatId, defaultBotAnswer.otherExs());
+                return new SendMessage(chatId, defaultBotAnswer.otherEx());
             }
         }
     }
-
-
-//    Маркеты для log.error и сообщения для юзеров, отправляемые в случае ошибок
-
-    private static final Marker LOGIC_MARKER = MarkerFactory.getMarker("LOGIC");
-    private static final Marker POWER_MARKER = MarkerFactory.getMarker("POWER");
-    private static final Marker NETWORK_MARKER = MarkerFactory.getMarker("NETWORK");
-    private static final Marker RANRE_MARKER = MarkerFactory.getMarker("RetryAttemptNotReadyException");
 
 }

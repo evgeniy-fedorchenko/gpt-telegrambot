@@ -1,6 +1,7 @@
 package com.efedorchenko.gptbot.yandex.service;
 
 import com.efedorchenko.gptbot.configuration.properties.YandexProperties;
+import com.efedorchenko.gptbot.yandex.model.SpeechKitAnswer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +26,8 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 
+import static com.efedorchenko.gptbot.utils.logging.LogUtils.LOGIC_MARKER;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -35,27 +38,35 @@ public class SpeechRecogniser {
     private final YandexProperties yandexProperties;
     private final ExecutorService executorServiceOfVirtual;
 
-    public Optional<String> recognize(byte[] bytes) {
+    public Optional<SpeechKitAnswer> doRecognize(byte[] bytes) {
 
         Request request = new Request.Builder()
                 .url(yandexProperties.getRecognizeUrl())
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + IamTokenSupplier.IAM_TOKEN)
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_OCTET_STREAM_VALUE)
+                .header(YandexProperties.YA_RQUID_HEADER_NAME, MDC.get("RqUID"))
+                .header(YandexProperties.FOLDER_ID_HEADER_NAME, yandexProperties.getFolderId())
                 .post(RequestBody.create(bytes, okhttp3.MediaType.parse("multipart/form-data")))
                 .build();
 
         try (Response response = httpClient.newCall(request).execute()) {
 
             String string = response.body().string();
-            String result = objectMapper.readTree(string).get("result").asText();
-            if (result.isEmpty()) {
+            SpeechKitAnswer recAnswer = objectMapper.readValue(string, SpeechKitAnswer.class);
+
+//            Возвращается сам объект, чтобы выше достать errorMessage
+            if (recAnswer.getResult() == null) {
+                return Optional.of(recAnswer);
+            }
+            if (recAnswer.getResult().isEmpty()) {
+                log.warn("Unrecognized voice message has been detected, Saving");
                 saveUnrecognizedVoiceAsync(bytes);
                 return Optional.empty();
             }
-            return Optional.of(result);
+            return Optional.of(recAnswer);
 
         } catch (IOException ex) {
-            log.error("Ошибка распознавания. Ex: {}", ex.getMessage());
+            log.error("Unexpected http-response from the SpeechKit network. Ex: {}", ex.getMessage());
             return Optional.empty();
         }
     }
@@ -82,10 +93,11 @@ public class SpeechRecogniser {
                 }
                 try (FileOutputStream fos = new FileOutputStream(filePath)) {
                     fos.write(bytes);
+                    log.debug("Unrecognized voice message has been saved");
                 }
 
             } catch (IOException e) {
-                log.error("Exception occurred when writing an unrecognized voice to a file: {}", e.getMessage());
+                log.error(LOGIC_MARKER, "Exception occurred when writing an unrecognized voice to a file: {}", e.getMessage());
             }
 
         }, executorServiceOfVirtual);

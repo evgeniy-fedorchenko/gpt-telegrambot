@@ -1,6 +1,5 @@
 package com.efedorchenko.gptbot.configuration.properties;
 
-import jakarta.annotation.PostConstruct;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Pattern;
@@ -18,6 +17,8 @@ import org.springframework.validation.annotation.Validated;
 public class YandexProperties {
 
     static final String CONFIGURATION_PREFIX = "yandex";
+    public static final String YA_RQUID_HEADER_NAME = "x-request-id";
+    public static final String FOLDER_ID_HEADER_NAME = "x-folder-id";
 
     /**
      * URL, по которому можно обратиться к модели {@code YandexGPT} через http (синхронный доступ)
@@ -84,15 +85,4 @@ public class YandexProperties {
     @URL(protocol = "https")
     private final String recognizeUrl;
 
-//    @NotEmpty
-//    @URL(protocol = "https")
-//    private final String synthesizeUrlPattern;
-
-    @PostConstruct
-    public void yandexPropertiesFormatted() {
-//        this.chatbotUriPattern = this.chatbotUriPattern.formatted(folderId);
-//        this.artModelUriPattern = this.artModelUriPattern.formatted(folderId);
-//        this.recognizeUrlPattern = this.recognizeUrlPattern.formatted(folderId);
-//        this.synthesizeUrlPattern = this.synthesizeUrlPattern.formatted(folderId);
-    }
 }
