@@ -128,14 +128,14 @@ public class TelegramDistributor {
 //        Проверка реальных каналов
 //        ChatMember adultMember = telegramExecutor.checkSubscribes(chatId, CHANNEL_FOR_SUB_ADULT);
 //        if (!adultMember.getStatus().equals("left") && !adultMember.getStatus().equals("kicked")) {
-//            log.debug(FUTURE_CHECK, "Adult member detected: {}", adultMember);
+//            log.debug(FUTURE_CHECK, "Adult member has been detected: {}", adultMember);
 //            return true;
 //        } else {
 //            ChatMember childMember = telegramExecutor.checkSubscribes(chatId, CHANNEL_FOR_SUB_CHILDREN);
 //            boolean childMemberDetected =
 //                    !childMember.getStatus().equals("left") && !childMember.getStatus().equals("kicked");
 //            if (childMemberDetected) {
-//                log.debug(FUTURE_CHECK, "Child member detected: {}", adultMember);
+//                log.debug(FUTURE_CHECK, "Child member has been detected: {}", adultMember);
 //                return true;
 //            }
 //            return false;
