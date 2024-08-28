@@ -35,4 +35,6 @@ build/
 /mvnw
 /mvnw.cmd
 
-/src/main/resources/secret.properties
+env/
+/logs/
+/release-plans.txt

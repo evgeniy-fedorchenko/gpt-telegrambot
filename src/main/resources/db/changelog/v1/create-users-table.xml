@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="1" author="evgeniy-fedorchenko">
+
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="users"/>
+            </not>
+        </preConditions>
+
+        <comment>Create table 'users' for entity 'BotUser'</comment>
+
+        <createTable tableName="users">
+            <column name="chat_id" type="bigint" autoIncrement="false">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+
+            <column name="created_at" type="timestamp" defaultValue="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified" type="timestamp" defaultValue="now()">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="username" type="varchar(32)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="name" type="varchar(140)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="yagpt_reqs_total" type="int">
+                <constraints nullable="false"/>
+            </column>
+            <column name="yaart_reqs_total" type="int">
+                <constraints nullable="false"/>
+            </column>
+            <column name="tokens_spent_total" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="yagpt_reqs_today" type="int">
+                <constraints nullable="false"/>
+            </column>
+            <column name="yaart_reqs_today" type="int">
+                <constraints nullable="false"/>
+            </column>
+            <column name="tokens_spent_today" type="int">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql>
+--             ALTER TABLE users ADD CONSTRAINT created_at_not_future    CHECK (current_timestamp >= created_at);
+--             ALTER TABLE users ADD CONSTRAINT last_modified_not_future CHECK (current_timestamp >= last_modified);
+            ALTER TABLE users ADD CONSTRAINT username_min_len         CHECK (length(username) >= 5);
+            ALTER TABLE users ADD CONSTRAINT username_pattern         CHECK (username ~ '[A-Aa-z0-9_]');
+
+            ALTER TABLE users ADD CONSTRAINT yagpt_reqs_total  CHECK (yagpt_reqs_total >= 0);
+            ALTER TABLE users ADD CONSTRAINT yaart_reqs_total  CHECK (yaart_reqs_total >= 0);
+            ALTER TABLE users ADD CONSTRAINT tokens_spent_total CHECK (tokens_spent_total >= 0);
+            ALTER TABLE users ADD CONSTRAINT yagpt_reqs_today  CHECK (yagpt_reqs_today >= 0);
+            ALTER TABLE users ADD CONSTRAINT yaart_reqs_today  CHECK (yaart_reqs_today >= 0);
+            ALTER TABLE users ADD CONSTRAINT tokens_spent_today CHECK (tokens_spent_today >= 0);
+
+--             ALTER TABLE users ADD CONSTRAINT yagpt_reqs_total_not_decrease  CHECK (yagpt_reqs_total >= (SELECT yagpt_reqs_total FROM users WHERE chatId = OLD.chatId));
+--             ALTER TABLE users ADD CONSTRAINT yaart_reqs_total_not_decrease  CHECK (yaart_reqs_total >= (SELECT yaart_reqs_total FROM users WHERE chatId = OLD.chatId));
+--             ALTER TABLE users ADD CONSTRAINT tokens_spent_total_not_decrease CHECK (tokens_spent_total >= (SELECT tokens_spent_total FROM users WHERE chatId = OLD.chatId));
+        </sql>
+
+    </changeSet>
+
+</databaseChangeLog>
