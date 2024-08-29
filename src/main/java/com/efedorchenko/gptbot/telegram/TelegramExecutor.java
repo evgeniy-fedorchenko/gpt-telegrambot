@@ -101,6 +101,7 @@ public class TelegramExecutor extends DefaultAbsSender {
      * Метод для отправки сообщения и возвращаемым значением {@link Message}.
      * Возвращается {@code null}, если не удалось отправить сообщение. Это значит
      * что было выброшено исключение, которое было подавлено и залогировано
+     *
      * @param messToSend сообщение для отправки
      * @return успешно отправленное сообщение
      */
@@ -124,12 +125,7 @@ public class TelegramExecutor extends DefaultAbsSender {
         }
     }
 
-    public ChatMember checkSubscribes(String chatId, String s) {
-        GetChatMember getChatMember = new GetChatMember(s, Long.parseLong(chatId));
-        try {
-            return execute(getChatMember);
-        } catch (TelegramApiException e) {
-            throw new RuntimeException(e);
-        }
+    public ChatMember checkSubscribes(long chatId, String s) throws TelegramApiException {
+        return execute(new GetChatMember(s, chatId));
     }
 }
