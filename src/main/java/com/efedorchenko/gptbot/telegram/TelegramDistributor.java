@@ -15,12 +15,17 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMember;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException;
 
 import java.io.Serializable;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 
 import static com.efedorchenko.gptbot.telegram.TelegramDistributor.Command.*;
+import static com.efedorchenko.gptbot.utils.logging.LogUtils.FUTURE_CHECK;
+import static com.efedorchenko.gptbot.utils.logging.LogUtils.LOGIC_MARKER;
 
 @Slf4j
 @Component
@@ -49,7 +54,8 @@ public class TelegramDistributor {
 
     private static final String TEST_CHANNEL_FOR_SUB = "@qwerty123456789qwertyqwerty";
     private static final String CHANNEL_FOR_SUB_CHILDREN = "@neuroncenterchildren";
-    private static final String CHANNEL_FOR_SUB_ADULT = "@neuroncenteradults";
+    private static final String CHANNEL_FOR_SUB_ADULTS = "@neuroncenteradults";
+    private static final Set<String> RIGHT_STATUSES = Set.of("creator", "administrator", "member", "restricted");
 
     public TelegramDistributor(UserModeRedisService userModeCache,
                                HistoryRedisService historyCache,
@@ -79,7 +85,7 @@ public class TelegramDistributor {
     }
 
     /**
-     * Метод принимает входящий {@code update} и распределяет его по обработчикам в зависимости от содержания
+     * Метод принимает входящий {@code update} и распределяет его по обработчикам в зависимости от содержания.
      * Возвращается {@code null}, если в процессе обработки становится понятно, что на это действие
      * не нужно ничего отвечать. (Например, если пришло уведомление о закрепленном сообщении)
      *
@@ -93,7 +99,7 @@ public class TelegramDistributor {
         String chatId = String.valueOf(inMess.getChatId());
 
 //        Проверка подписок на каналы
-        if (!checkSubscribes(chatId)) {   // Кешировать
+        if (!checkSubscribes(inMess.getChatId())) {   // TODO 29.08.2024 22:08: Кешировать или запускать асинхронно
             return new SendMessage(chatId, defaultBotAnswer.subscribeForUse());
         }
 //        На закрепление сообщения ничего не делаем
@@ -103,7 +109,7 @@ public class TelegramDistributor {
 
 //        Если нет текста и ГС - даем ОС (подпись под фото не считается за текст)
         if (!inMess.hasText() && !inMess.hasVoice()) {
-            return new SendMessage(String.valueOf(chatId), defaultBotAnswer.invalidDataFormat());
+            return new SendMessage(chatId, defaultBotAnswer.invalidDataFormat());
         }
 
 //        Block if user wait for the image as YANDEX_ART mode
@@ -121,35 +127,30 @@ public class TelegramDistributor {
         return telegramService.processing(currentMode, update);
     }
 
-    private boolean checkSubscribes(String chatId) {
-//        Тестовый канал
-        ChatMember chatMember = telegramExecutor.checkSubscribes(chatId, TEST_CHANNEL_FOR_SUB);
+    private boolean checkSubscribes(long chatId) {
+        try {
+            ChatMember adultMember = telegramExecutor.checkSubscribes(chatId, CHANNEL_FOR_SUB_ADULTS);
+            if (RIGHT_STATUSES.contains(adultMember.getStatus())) {
+                return true;
+            }
+            ChatMember childMember = telegramExecutor.checkSubscribes(chatId, CHANNEL_FOR_SUB_CHILDREN);
+            return RIGHT_STATUSES.contains(childMember.getStatus());
 
-//        Проверка реальных каналов
-//        ChatMember adultMember = telegramExecutor.checkSubscribes(chatId, CHANNEL_FOR_SUB_ADULT);
-//        if (!adultMember.getStatus().equals("left") && !adultMember.getStatus().equals("kicked")) {
-//            log.debug(FUTURE_CHECK, "Adult member has been detected: {}", adultMember);
-//            return true;
-//        } else {
-//            ChatMember childMember = telegramExecutor.checkSubscribes(chatId, CHANNEL_FOR_SUB_CHILDREN);
-//            boolean childMemberDetected =
-//                    !childMember.getStatus().equals("left") && !childMember.getStatus().equals("kicked");
-//            if (childMemberDetected) {
-//                log.debug(FUTURE_CHECK, "Child member has been detected: {}", adultMember);
-//                return true;
-//            }
-//            return false;
-//        }
+            /* administrator (администратор канала)
+             * kicked        (выгнан с канала)
+             * left          (не подписан/покинул самостоятельно)
+             * member        (участник канала)
+             * creator       (создатель канала)
+             * restricted    (доступ ограничен) */
 
-        return !chatMember.getStatus().equals("left")
-               && !chatMember.getStatus().equals("kicked");
-
-        /* administrator (администратор канала)
-         *  kicked        (выгнан с канала)
-         *  left          (не подписан/покинул самостоятельно)
-         *  member        (участник канала)
-         *  creator       (создатель канала)
-         *  restricted    (доступ ограничен) */
+        } catch (TelegramApiRequestException tare) {
+            log.error(FUTURE_CHECK, "TelegramApiRequestException was thrown because the bot is not an admin of the channels that the subscription is for. Skipped, access to the bot is open. Cause: {}", tare.getMessage());
+        } catch (TelegramApiException ex) {
+            log.error(LOGIC_MARKER, "TelegramApiException was thrown. Ex: ", ex);
+        } catch (Exception ex) {
+            log.error(LOGIC_MARKER, "Unknown exception was thrown. Skipped, access to the bot is open. Ex: ", ex);
+        }
+        return true;
     }
 
     @Getter
