@@ -44,6 +44,7 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
     private final ObjectMapper objectMapper;
     private final HistoryRedisService historyCache;
     private final YandexProperties yandexProperties;
+    private final RequestSubmitterAsync requestSubmitter;
     private final ExecutorService executorServiceOfVirtual;
 
     private final Object networkLock = new Object();
@@ -89,6 +90,12 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
                 .header(YandexProperties.FOLDER_ID_HEADER_NAME, yandexProperties.getFolderId())
                 .post(RequestBody.create(serializedBody, OkHttpClientConfiguration.MT_APPLICATION_JSON))
                 .build();
+
+        CompletableFuture<Response> responseFuture =
+                requestSubmitter.submitRequest(() -> httpClient.newCall(request).execute());
+//        Обработка результата, возможно плохого
+
+//        -----------------------------
 
         Response response = null;
         Call call = httpClient.newCall(request);
