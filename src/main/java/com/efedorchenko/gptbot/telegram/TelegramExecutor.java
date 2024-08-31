@@ -1,8 +1,10 @@
 package com.efedorchenko.gptbot.telegram;
 
+import com.efedorchenko.gptbot.configuration.RedisConfiguration;
 import com.efedorchenko.gptbot.configuration.properties.TelegramProperties;
 import jakarta.annotation.Nullable;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.DefaultAbsSender;
 import org.telegram.telegrambots.bots.DefaultBotOptions;
@@ -129,10 +131,11 @@ public class TelegramExecutor extends DefaultAbsSender {
         }
     }
 
+    @Cacheable(cacheNames = RedisConfiguration.USER_IS_SUB_CACHE_NAME, key = "#chatId")
     public String checkSubscribesPositive(long chatId, String channelLink) {
 
         try {
-            return doCheckSubs(chatId, channelLink).getStatus();
+            return getChatMember(chatId, channelLink).getStatus();
 
         } catch (TelegramApiRequestException tare) {
             log.error(FUTURE_CHECK, "TelegramApiRequestException was thrown because bot is not admin of the channel '%s' to which the subscription is checked. Skipped, access to the bot is open. Cause: {}", tare.getMessage());
@@ -147,7 +150,7 @@ public class TelegramExecutor extends DefaultAbsSender {
 
     }
 
-    private ChatMember doCheckSubs(long chatId, String s) throws TelegramApiException {
+    private ChatMember getChatMember(long chatId, String s) throws TelegramApiException {
         return execute(new GetChatMember(s, chatId));
     }
 }
