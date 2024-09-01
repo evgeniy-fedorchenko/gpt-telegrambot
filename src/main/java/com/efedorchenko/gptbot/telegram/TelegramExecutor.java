@@ -138,7 +138,8 @@ public class TelegramExecutor extends DefaultAbsSender {
             return getChatMember(chatId, channelLink).getStatus();
 
         } catch (TelegramApiRequestException tare) {
-            log.error(FUTURE_CHECK, "TelegramApiRequestException was thrown because bot is not admin of the channel '%s' to which the subscription is checked. Skipped, access to the bot is open. Cause: {}", tare.getMessage());
+            log.error(FUTURE_CHECK, "TelegramApiRequestException was thrown because bot is not admin of the channel '%s' to which the subscription is checked. Skipped, access to the bot is open. Cause: {}"
+                    .formatted(channelLink), tare.getMessage());
         } catch (TelegramApiException tae) {
             log.error(LOGIC_MARKER, "TelegramApiException was thrown. Ex: ", tae);
         } catch (Exception ex) {

@@ -1,6 +1,7 @@
 package com.efedorchenko.gptbot.telegram;
 
 import com.efedorchenko.gptbot.configuration.properties.DefaultBotAnswer;
+import com.efedorchenko.gptbot.configuration.properties.TelegramProperties;
 import com.efedorchenko.gptbot.data.HistoryRedisService;
 import com.efedorchenko.gptbot.data.UserModeRedisService;
 import com.efedorchenko.gptbot.service.TelegramService;
@@ -43,23 +44,25 @@ public class TelegramDistributor {
      */
     private final Function<String, SendMessage> unsupportedCommandReact;
 
-    private final UserModeRedisService userModeCache;
     private final TelegramService telegramService;
-    private final DefaultBotAnswer defaultBotAnswer;
     private final TelegramExecutor telegramExecutor;
+    private final DefaultBotAnswer defaultBotAnswer;
+    private final UserModeRedisService userModeCache;
+    private final TelegramProperties telegramProperties;
 
-    private static final String TEST_CHANNEL_FOR_SUB = "@qwerty123456789qwertyqwerty";
-    private static final String CHANNEL_FOR_SUB_CHILDREN = "@neuroncenterchildren";
-    private static final String CHANNEL_FOR_SUB_ADULTS = "@neuroncenteradults";
     private static final Set<String> RIGHT_STATUSES = Set.of("creator", "administrator", "member", "restricted");
 
     public TelegramDistributor(UserModeRedisService userModeCache,
                                HistoryRedisService historyCache,
                                TelegramService telegramService,
-                               DefaultBotAnswer defaultBotAnswer, TelegramExecutor telegramExecutor) {
+                               DefaultBotAnswer defaultBotAnswer,
+                               TelegramExecutor telegramExecutor,
+                               TelegramProperties telegramProperties) {
         this.userModeCache = userModeCache;
         this.telegramService = telegramService;
         this.defaultBotAnswer = defaultBotAnswer;
+        this.telegramProperties = telegramProperties;
+        this.telegramExecutor = telegramExecutor;
 
         this.unsupportedCommandReact = chatId -> new SendMessage(chatId, defaultBotAnswer.unknownCommand());
         this.commandReactMap = Map.of(
@@ -77,7 +80,6 @@ public class TelegramDistributor {
                     return new SendMessage(chatId, defaultBotAnswer.yaartCommand());
                 }
         );
-        this.telegramExecutor = telegramExecutor;
     }
 
     /**
@@ -126,11 +128,13 @@ public class TelegramDistributor {
 
     private boolean checkSubscribes(long chatId) {
 
-        String adultChannelStatus = telegramExecutor.checkSubscribesPositive(chatId, CHANNEL_FOR_SUB_ADULTS);
+        String adultChannelStatus =
+                telegramExecutor.checkSubscribesPositive(chatId, telegramProperties.getAccessChannelAdults());
         if (RIGHT_STATUSES.contains(adultChannelStatus)) {
             return true;
         }
-        String childMemberStatus = telegramExecutor.checkSubscribesPositive(chatId, CHANNEL_FOR_SUB_CHILDREN);
+        String childMemberStatus =
+                telegramExecutor.checkSubscribesPositive(chatId, telegramProperties.getAccessChannelChildren());
         return RIGHT_STATUSES.contains(childMemberStatus);
 
         /* administrator (администратор канала)
