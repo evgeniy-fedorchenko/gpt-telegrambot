@@ -27,8 +27,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
-
-import static com.efedorchenko.gptbot.utils.logging.LogUtils.FUTURE_CHECK;
+import java.util.concurrent.Semaphore;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -38,17 +37,14 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
     public static final String SERVICE_NAME = "YandexGptService";
     private static final int MAX_COUNT_SYMBOLS = 3700;
     private static final long REQUIRED_MILLIS_BETWEEN_REQS = 500L;
-    private static Long exitTime;
+    private static final Semaphore requestSemaphore = new Semaphore(5, true);
 
     private final OkHttpClient httpClient;
     private final ObjectMapper objectMapper;
     private final HistoryRedisService historyCache;
-    private final YandexProperties yandexProperties;
-    private final RequestSubmitterAsync requestSubmitter;
-    private final ExecutorService executorServiceOfVirtual;
-
-    private final Object networkLock = new Object();
     private final DefaultBotAnswer defaultBotAnswer;
+    private final YandexProperties yandexProperties;
+    private final ExecutorService executorServiceOfVirtual;
 
     @Override
     public String validate(Message inputMess) {
@@ -91,45 +87,28 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
                 .post(RequestBody.create(serializedBody, OkHttpClientConfiguration.MT_APPLICATION_JSON))
                 .build();
 
-        CompletableFuture<Response> responseFuture =
-                requestSubmitter.submitRequest(() -> httpClient.newCall(request).execute());
-//        Обработка результата, возможно плохого
-
-//        -----------------------------
-
         Response response = null;
-        Call call = httpClient.newCall(request);
         try {
 
-            /* Яндекс обрабатывает только один запрос в единицу времени. При перерыв между запросами
-               должен составлять минимум MIN_MILLIS_BETWEEN_REQS (количество времени в миллисекундах) */
-            synchronized (networkLock) {
-
-                Long entryTime = System.currentTimeMillis();
-                if (exitTime != null) {
-                    long timeDifference = entryTime - exitTime;
-                    if (timeDifference < REQUIRED_MILLIS_BETWEEN_REQS) {
-                        long expectationMillis = REQUIRED_MILLIS_BETWEEN_REQS - timeDifference;
-                        log.warn(FUTURE_CHECK, "Request queue detected. expectation: {}", expectationMillis);
-                        Thread.sleep(expectationMillis);
-                    }
-                }
-
+            try {
+                Call call = httpClient.newCall(request);
+                requestSemaphore.acquire();
                 response = call.execute();
+                Thread.sleep(REQUIRED_MILLIS_BETWEEN_REQS);
 
-                exitTime = System.currentTimeMillis();
-                entryTime = null;   // GC help
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            } finally {
+                requestSemaphore.release();
             }
 
-            if (response.code() == HttpStatus.TOO_MANY_REQUESTS.value()) {
+            if (response == null || response.code() == HttpStatus.TOO_MANY_REQUESTS.value()) {
                 return Optional.of(GptAnswer.builder().errorHttpStatus(HttpStatus.TOO_MANY_REQUESTS).build());
             }
             return response.body() != null
                     ? Optional.of(objectMapper.readValue(response.body().string(), responseType))
-                    : Optional.empty();
+                    : Optional.of(GptAnswer.builder().errorHttpStatus(HttpStatus.BAD_GATEWAY).build());
 
-        } catch (InterruptedException e) {
-            return Optional.of(GptAnswer.builder().errorHttpStatus(HttpStatus.BAD_GATEWAY).build());   // default error answer
         } finally {
             if (response != null) {
                 response.close();

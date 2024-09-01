@@ -4,7 +4,6 @@ import com.efedorchenko.gptbot.configuration.properties.ExecutorProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Scope;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -46,14 +45,4 @@ public class ExecutorsConfiguration {
         return Executors.newScheduledThreadPool(1);
     }
 
-    @Bean
-    @Scope("prototype")
-    public ThreadPoolTaskExecutor requestSubmitterPoolExecutor() {
-        // TODO 30.08.2024 16:40 - создать нормальный экзекутор
-        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(2);
-        executor.setMaxPoolSize(2);
-        executor.initialize();
-        return executor;
-    }
 }
