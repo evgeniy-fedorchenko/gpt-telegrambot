@@ -15,6 +15,8 @@ public class VirtualThreadFactory implements ThreadFactory {
     @Override
     public Thread newThread(@NotNull Runnable r) {
 
+        // TODO 01.09.2024 22:29: Избавиться от LocalThread, использовать MDC, переносить весь контекст
+
         String rquid = MDC.get("RqUID");
         if (rquid == null) {
             User user = TelegramBot.localUser.get();
