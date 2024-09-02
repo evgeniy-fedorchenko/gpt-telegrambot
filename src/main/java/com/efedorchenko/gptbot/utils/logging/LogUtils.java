@@ -22,18 +22,26 @@ import java.util.function.BiConsumer;
 @RequiredArgsConstructor
 public class LogUtils {
 
-
+//     Markers for use in loggers
     public static final Marker LOGIC_MARKER = MarkerFactory.getMarker("LOGIC");
     public static final Marker POWER_MARKER = MarkerFactory.getMarker("POWER");
     public static final Marker NETWORK_MARKER = MarkerFactory.getMarker("NETWORK");
     public static final Marker RANRE_MARKER = MarkerFactory.getMarker("RetryAttemptNotReadyException");
     public static final Marker FUTURE_CHECK = MarkerFactory.getMarker("CHECK");
 
-    private final ObjectMapper objectMapper;
+//     Message's patterns for logging main stages processing update
+    public static final String BEGUN = "Processing has BEGUN for updateID {}";
+    public static final String FINISHED_NORMALLY = "Processing has FINISHED normally for updateID {}";
+    public static final String FINISHED_NORMALLY_NULL = "Processing has FINISHED (null specially, not sent anything) for updateID {}";
+    public static final String FILED_UNHANDLED = "Processing has FAILED (NOT HANDLED) for updateID {}. Ex: ";
 
+//     Patterns for declare logging
     private static final String PARAMS = "-> [{}]";
     private static final String RETURN = "<- [{}]";
     private static final String EX = "!- [{}]";
+
+//     Spring java beans
+    private final ObjectMapper objectMapper;
 
     public String shortenString(String args, Integer maxLength) {
         return args.length() > maxLength
