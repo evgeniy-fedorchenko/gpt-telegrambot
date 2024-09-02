@@ -2,7 +2,7 @@ package com.efedorchenko.gptbot.aop;
 
 import com.efedorchenko.gptbot.data.BotUserRepository;
 import com.efedorchenko.gptbot.entity.BotUser;
-import com.efedorchenko.gptbot.telegram.TelegramBot;
+import com.efedorchenko.gptbot.utils.logging.LogUtils;
 import com.efedorchenko.gptbot.yandex.model.ArtAnswer;
 import com.efedorchenko.gptbot.yandex.model.GptAnswer;
 import lombok.RequiredArgsConstructor;
@@ -10,9 +10,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.annotation.AfterReturning;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
+import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-import org.telegram.telegrambots.meta.api.objects.User;
 
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -28,22 +28,27 @@ public class StatsCollector {
     private final BotUserRepository botUserRepository;
 
     @Pointcut("execution(* com.efedorchenko.gptbot.service.AiModelService.buildAndExecutePost(..))")
-    public void aroundAiModelService() {
+    public void aiExecutingPointcut() {
     }
 
     @Transactional
-    @AfterReturning(pointcut = "aroundAiModelService()", returning = "result")
-    public Object collectYandexGptStats(Object result) {
+    @AfterReturning(pointcut = "aiExecutingPointcut()", returning = "result")
+    public Object collectAiUsesStats(Object result) {
 
         if (result instanceof Optional<?> resultOpt && resultOpt.isPresent()) {
 
-            User currentUser = TelegramBot.localUser.get();
             CompletableFuture.runAsync(() -> {
 
-                BotUser botUser = botUserRepository.findById(currentUser.getId()).orElseGet(() -> {
+                String mdcUserAsString = MDC.get(MdcConfigurer.MDC_USER);
+                if (mdcUserAsString == null) {
+                    log.error(LogUtils.LOGIC_MARKER, "mdcUser is null");
+                    return;
+                }
+                MdcConfigurer.MdcUser currentUser = MdcConfigurer.MdcUser.fromString(mdcUserAsString);
+                BotUser botUser = botUserRepository.findById(Long.valueOf(currentUser.getId())).orElseGet(() -> {
                     BotUser newUser = new BotUser();
-                    newUser.setChatId(currentUser.getId());
-                    newUser.setUsername(currentUser.getUserName());
+                    newUser.setChatId(Long.parseLong(currentUser.getId()));
+                    newUser.setUsername(currentUser.getUsername());
                     newUser.setName(extractName(currentUser));
 
                     log.info("New user! :)     Details: {}", newUser);
@@ -73,9 +78,9 @@ public class StatsCollector {
         return result;
     }
 
-    private String extractName(User currentUser) {
-        String firstName = currentUser.getFirstName();
-        String lastName = currentUser.getLastName();
+    private String extractName(MdcConfigurer.MdcUser currentUser) {
+        String firstName = currentUser.getFirstname();
+        String lastName = currentUser.getLastname();
 
         if (firstName.isBlank() && lastName.isBlank()) {
             return "Unknown user";

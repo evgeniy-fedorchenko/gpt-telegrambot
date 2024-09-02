@@ -6,7 +6,6 @@ import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.PartialBotApiMethod;
 import org.telegram.telegrambots.meta.api.objects.Update;
-import org.telegram.telegrambots.meta.api.objects.User;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -18,8 +17,6 @@ public class TelegramBot extends TelegramLongPollingBot {
     private final TelegramProperties telegramProperties;
     private final TelegramUpdateHandler telegramUpdateHandler;
     private final ExecutorService executorServiceOfVirtual;
-
-    public static final ThreadLocal<User> localUser = new ThreadLocal<>();
 
     public TelegramBot(TelegramProperties telegramProperties,
                        TelegramUpdateHandler telegramUpdateHandler,

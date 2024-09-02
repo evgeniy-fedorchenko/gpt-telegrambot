@@ -5,7 +5,6 @@ import com.efedorchenko.gptbot.data.UserModeRedisService;
 import com.efedorchenko.gptbot.exception.GptTelegramBotException;
 import com.efedorchenko.gptbot.exception.RetryAttemptNotReadyException;
 import com.efedorchenko.gptbot.telegram.Mode;
-import com.efedorchenko.gptbot.telegram.TelegramBot;
 import com.efedorchenko.gptbot.telegram.TelegramExecutor;
 import com.efedorchenko.gptbot.utils.logging.Log;
 import com.efedorchenko.gptbot.yandex.model.SpeechKitAnswer;
@@ -62,7 +61,6 @@ public class TelegramService {
         Message inMess = update.getMessage();
         String chatId = String.valueOf(inMess.getChatId());
         Future<?> future = scheduleChatAction(chatId, currentMode);
-        TelegramBot.localUser.set(inMess.getFrom());
 
         try {
             AiModelService<REQ, RESP> aiModelService = getAiModelService(currentMode);
@@ -89,7 +87,6 @@ public class TelegramService {
 
         } finally {
             future.cancel(true);
-            TelegramBot.localUser.remove();
             if (userModeCache.getMode(chatId).equals(Mode.YANDEX_ART_HOLD)) {
                 userModeCache.setMode(chatId, Mode.YANDEX_ART);
             }
