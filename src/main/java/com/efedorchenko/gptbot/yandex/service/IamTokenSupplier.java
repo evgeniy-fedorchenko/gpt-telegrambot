@@ -1,6 +1,5 @@
 package com.efedorchenko.gptbot.yandex.service;
 
-import com.efedorchenko.gptbot.aop.MdcConfigurer;
 import com.efedorchenko.gptbot.configuration.OkHttpClientConfiguration;
 import com.efedorchenko.gptbot.configuration.properties.YandexProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,7 +12,6 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
-import org.slf4j.MDC;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Async;
@@ -65,7 +63,6 @@ public class IamTokenSupplier {
             Request request = new Request.Builder()
                     .url(yandexProperties.getIamTokenUpdaterUrl())
                     .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                    .header(YandexProperties.YA_RQUID_HEADER_NAME, MDC.get(MdcConfigurer.RQUID)) // FIXME 03.09.2024 00:27: получать rquid безопасно
                     .header(YandexProperties.FOLDER_ID_HEADER_NAME, yandexProperties.getFolderId())
                     .post(RequestBody.create(body, OkHttpClientConfiguration.MT_APPLICATION_JSON))
                     .build();

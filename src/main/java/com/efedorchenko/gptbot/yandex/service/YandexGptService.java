@@ -13,7 +13,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
-import org.slf4j.MDC;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -85,7 +84,6 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
                 .url(url)
                 .header(HttpHeaders.CONTENT_TYPE, org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + IamTokenSupplier.IAM_TOKEN)
-                .header(YandexProperties.YA_RQUID_HEADER_NAME, MDC.get("RqUID"))
                 .header(YandexProperties.FOLDER_ID_HEADER_NAME, yandexProperties.getFolderId())
                 .post(RequestBody.create(serializedBody, OkHttpClientConfiguration.MT_APPLICATION_JSON))
                 .build();
@@ -140,13 +138,9 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
         if (errorHttpStatus != null) {
             return new SendMessage(chatId, defaultBotAnswer.yagptAnswerOfStatus(errorHttpStatus));
         }
+
         GptMessageUnit answer = response.getResult().getAlternatives().getLast().getMessage();
-
-        CompletableFuture.runAsync(
-                () -> historyCache.addMessage(chatId, answer),
-                executorServiceOfVirtual
-        );
-
+        CompletableFuture.runAsync(() -> historyCache.addMessage(chatId, answer), executorServiceOfVirtual);
         return new SendMessage(chatId, answer.getText());
     }
 
