@@ -48,7 +48,7 @@ public class StatsCollector {
                 BotUser botUser = botUserRepository.findById(Long.valueOf(currentUser.getId())).orElseGet(() -> {
                     BotUser newUser = new BotUser();
                     newUser.setChatId(Long.parseLong(currentUser.getId()));
-                    newUser.setUsername(currentUser.getUsername());
+                    newUser.setUsername(currentUser.getUsername() == null ? "unknown" : currentUser.getUsername());
                     newUser.setName(extractName(currentUser));
 
                     log.info("New user! :)     Details: {}", newUser);
@@ -82,13 +82,13 @@ public class StatsCollector {
         String firstName = currentUser.getFirstname();
         String lastName = currentUser.getLastname();
 
-        if (firstName.isBlank() && lastName.isBlank()) {
+        if ((firstName == null || firstName.isBlank()) && (lastName == null || lastName.isBlank())) {
             return "Unknown user";
         }
-        if (firstName.isBlank()) {
+        if (firstName == null || firstName.isBlank()) {
             return lastName;
         }
-        if (lastName.isBlank()) {
+        if (lastName == null || lastName.isBlank()) {
             return firstName;
         }
         return firstName + " " + lastName;
