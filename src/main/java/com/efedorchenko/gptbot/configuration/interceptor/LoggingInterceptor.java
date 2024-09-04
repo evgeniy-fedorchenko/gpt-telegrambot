@@ -1,10 +1,13 @@
 package com.efedorchenko.gptbot.configuration.interceptor;
 
+import com.efedorchenko.gptbot.utils.logging.LogUtils;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 import okio.Buffer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.springframework.core.Ordered;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -15,13 +18,26 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Component
-public class LoggingInterceptor implements Interceptor {
+@RequiredArgsConstructor
+public class LoggingInterceptor implements Interceptor, Ordered {
 
-    private static final String BASE64_REGEX = "([A-Za-z0-9+/]{1000,})(=*)";
+    private final LogUtils logUtils;
 
-    @NotNull
     @Override
-    public Response intercept(@NotNull Interceptor.Chain chain) throws IOException {
+    public int getOrder() {
+        return 1;
+    }
+
+    /**
+     * Метод для логирования http-запросов и получаемых ответов, включая их тела (если метод запроса POST)
+     * Логирование происходит на уровне {@code TRACE} и включает в себя полный урл запроса, заголовки и тело
+     * запроса, а так же код ответа, заголовки, тело и время потраченное на отправку запроса и получение ответа.
+     *
+     * @throws IOException если {@code chain.proceed(request)} выбрасывает соответствующее исключение
+     */
+    @NotNull
+//    @Override
+    public Response intercept(@NotNull Chain chain) throws IOException {
 
         Request request = chain.request();
 
@@ -42,7 +58,6 @@ public class LoggingInterceptor implements Interceptor {
         log.trace("\nStatus        : {}\nHeaders       : {}\nResponse body : {}",
                 response.code() + " (" + (response.receivedResponseAtMillis() - response.sentRequestAtMillis()) + " ms)",
                 formatHeaders(response.headers()), formatBody(bodyString, response.header(HttpHeaders.CONTENT_TYPE)));
-
         return response.newBuilder()
                 .body(ResponseBody.create(bodyString, body.contentType()))
                 .build();
@@ -72,9 +87,10 @@ public class LoggingInterceptor implements Interceptor {
         if (body == null || body.isEmpty() || body.equals("no body")) {
             return "no body";
         }
-        return Objects.equals(header, MediaType.APPLICATION_OCTET_STREAM_VALUE)
+        String s = Objects.equals(header, MediaType.APPLICATION_OCTET_STREAM_VALUE)
                 ? "binary data"
-                : body.replaceAll("\\s", "").replaceAll(BASE64_REGEX, "base64 encoding");
+                : logUtils.formatForLogging(body.toUpperCase());
+        System.err.println(s);
+        return s;
     }
-
 }

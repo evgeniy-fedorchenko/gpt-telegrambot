@@ -6,16 +6,20 @@ import okhttp3.Request;
 import okhttp3.Response;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.MDC;
-import org.springframework.core.annotation.Order;
+import org.springframework.core.Ordered;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.util.Optional;
 import java.util.UUID;
 
-@Order(1)
 @Component
-public class RquidInterceptor implements Interceptor {
+public class RquidInterceptor implements Interceptor, Ordered {
+
+    @Override
+    public int getOrder() {
+        return 1;
+    }
 
     @NotNull
     @Override
@@ -32,4 +36,5 @@ public class RquidInterceptor implements Interceptor {
 
         return chain.proceed(newRequest);
     }
+
 }
