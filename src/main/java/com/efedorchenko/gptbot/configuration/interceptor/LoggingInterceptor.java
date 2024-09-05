@@ -71,7 +71,7 @@ public class LoggingInterceptor implements Interceptor, Ordered {
 
     private @NotNull String extractBody(Request request) {
         if (request.body() == null) {
-            return "no body";
+            return "absent";
         }
         try {
             Buffer buffer = new Buffer();
@@ -79,18 +79,14 @@ public class LoggingInterceptor implements Interceptor, Ordered {
             return buffer.readUtf8();
         } catch (IOException ioe) {
             log.error("Filed to intercept body. Ex: ", ioe);
-            return "unreadable body";
+            return "unreadable";
         }
     }
 
     private @NotNull String formatBody(@Nullable String body, @Nullable String header) {
-        if (body == null || body.isEmpty() || body.equals("no body")) {
-            return "no body";
+        if (body == null || body.isEmpty() || body.equals("absent")) {
+            return "absent";
         }
-        String s = Objects.equals(header, MediaType.APPLICATION_OCTET_STREAM_VALUE)
-                ? "binary data"
-                : logUtils.formatForLogging(body.toUpperCase());
-        System.err.println(s);
-        return s;
+        return Objects.equals(header, MediaType.APPLICATION_OCTET_STREAM_VALUE) ? "binary" : logUtils.format(body);
     }
 }
