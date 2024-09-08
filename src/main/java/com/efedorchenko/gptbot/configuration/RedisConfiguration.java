@@ -59,7 +59,6 @@ public class RedisConfiguration {
         RedisTemplate<String, String> redisTemplate = new RedisTemplate<>();
         redisTemplate.setConnectionFactory(connectionFactory);
 
-        // TODO 30.08.2024 21:51: Обязательно дропнуть этот кеш, чтобы новый сериализатор не споткнулся об старые значения
         redisTemplate.setKeySerializer(new StringRedisSerializer());
         redisTemplate.setValueSerializer(new StringRedisSerializer());
 
