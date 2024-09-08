@@ -54,7 +54,7 @@ public class TelegramService {
     private final ApplicationContext applicationContext;
     private final ExecutorService executorServiceOfVirtual;
 
-    @Log(result = false)   // result логируется методом, стоящим выше по стеку
+    @Log
     public <REQ extends Serializable, RESP> PartialBotApiMethod<? extends Serializable> processing(
             Mode currentMode, Update update) {
 

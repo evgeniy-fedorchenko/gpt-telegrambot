@@ -22,6 +22,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import org.slf4j.event.Level;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -111,6 +112,7 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
     }
 
     @Override
+    @Log(level = Level.TRACE)
     public ArtRequestBody prepareRequest(Message inputMess) {
 
         userModeCache.setMode(inputMess.getChatId(), Mode.YANDEX_ART_HOLD);
@@ -121,8 +123,8 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
                 .build();
     }
 
-    @Log
     @Override
+    @Log(level = Level.TRACE)
     public Optional<ArtAnswer> buildAndExecutePost(String url, Serializable requestBody, Class<ArtAnswer> responseType)
             throws IOException {
 
@@ -143,8 +145,8 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
         }
     }
 
-    @Log(result = false)
     @Override
+    @Log(level = Level.TRACE)
     public PartialBotApiMethod<? extends Serializable> responseProcess(ArtAnswer firstResponse, Message sourceMess) {
 
         String chatId = String.valueOf(sourceMess.getChatId());

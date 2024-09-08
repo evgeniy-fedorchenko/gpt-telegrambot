@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
@@ -62,24 +63,27 @@ public class LogUtils {
      * работы метода. Детализация логирования настраивается для каждого метода отдельно. См. аннотацию {@link Log}.
      * Метод адаптирован к {@link CompletableFuture} и логирует только результат (или исключение)<br>
      * Метод не адаптирован к оберткам объектов реактивного стека ({@code Mono}, {@code Flux})
+     *
      * @param paramsForLogFuture список параметров метода (их значений). Параметры, исключенные из логирования,
      *                           должны быть уже отсеяны. Перед логированием результат будет получен безопасно
-     * @param result значение, возвращенное методом (или экземпляр {@link Throwable}). Возвращаемое значение будет
-     *               залогировано в соответствии с флагом {@link Log#result()}. {@link Throwable} будет залогирован
-     *               в любом случае. Если возвращаемое значение представляет собой экземпляр {@link CompletableFuture},
-     *              то перед логированием он будет безопасно получен
-     * @param targetlogger целевой логгер, с помощью которого будет произведено логирование
-     * @param log настройки, в соответствии с которыми произойдет логирование
+     * @param result             значение, возвращенное методом (или экземпляр {@link Throwable}). Возвращаемое значение будет
+     *                           залогировано в соответствии с флагом {@link Log#result()}. {@link Throwable} будет залогирован
+     *                           в любом случае. Если возвращаемое значение представляет собой экземпляр {@link CompletableFuture},
+     *                           то перед логированием он будет безопасно получен
+     * @param targetlogger       целевой логгер, с помощью которого будет произведено логирование
+     * @param log                настройки, в соответствии с которыми произойдет логирование
      */
     @Async("executorServiceOfVirtual")
-    public void doLogMethodAsyncForSomeone(CompletableFuture<List<Object>> paramsForLogFuture,
+    public void doLogMethodAsyncForSomeone(@Nullable CompletableFuture<List<Object>> paramsForLogFuture,
                                            Object result,
                                            Logger targetlogger,
                                            Log log) {
 
         BiConsumer<String, String> logger = logFunction(targetlogger, log.level());
 
-        logger.accept(PARAMS, formatFutures(paramsForLogFuture));
+        if (paramsForLogFuture != null) {
+            logger.accept(PARAMS, formatFutures(paramsForLogFuture));
+        }
         switch (result) {
             case Throwable throwable -> logger.accept(EX, throwable.toString());
             case CompletableFuture<?> resultFuture -> resultFuture.whenComplete((sucComplete, exComplete) -> {
@@ -120,7 +124,7 @@ public class LogUtils {
                     : result;
 
         } catch (IOException ex) {
-            log.trace(LOGIC_MARKER, "Cannot format object. Ex: {}", ex.getMessage());
+            // TODO 08.09.2024 14:49: разобраться почему спотыкается на ссылках
             return "impossible to deserialize <" + object + ">";
         }
     }
@@ -145,7 +149,8 @@ public class LogUtils {
         return switch (node) {
             case ArrayNode arrayNode when arrayNode.size() > maxElements -> {
                 ArrayNode truncatedArray = JsonNodeFactory.instance.arrayNode();
-                JsonNode firstElement = JsonNodeFactory.instance.textNode("[..->..]");
+                JsonNode firstElement =
+                        JsonNodeFactory.instance.textNode("<.. " + (arrayNode.size() - maxElements) + " hide ..>");
                 truncatedArray.add(firstElement);
                 for (int i = arrayNode.size() - maxElements; i < arrayNode.size(); i++) {
                     truncatedArray.add(arrayNode.get(i));
@@ -157,7 +162,7 @@ public class LogUtils {
                 objectNode.fields().forEachRemaining(f -> result.set(f.getKey(), truncate(f.getValue(), maxElements)));
                 yield result;
             }
-            default -> node;   // or case "ArrayNode arrayNode"
+            default -> node;   // or case "ArrayNode arrayNode arrayNode.size() <= maxElements"
         };
     }
 }
