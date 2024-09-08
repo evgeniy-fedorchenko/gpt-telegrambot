@@ -12,7 +12,7 @@
 
 	<groupId>com.efedorchenko</groupId>
 	<artifactId>gpt-telegrambot</artifactId>
-	<version>1.1.1-SNAPSHOT</version>
+	<version>1.0.1</version>
 	<name>gpt-telegrambot</name>
 	<description>GPT-models telegram-bot integration</description>
 
