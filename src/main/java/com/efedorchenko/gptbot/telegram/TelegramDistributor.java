@@ -1,6 +1,7 @@
 package com.efedorchenko.gptbot.telegram;
 
 import com.efedorchenko.gptbot.configuration.properties.DefaultBotAnswer;
+import com.efedorchenko.gptbot.configuration.properties.TelegramProperties;
 import com.efedorchenko.gptbot.data.HistoryRedisService;
 import com.efedorchenko.gptbot.data.UserModeRedisService;
 import com.efedorchenko.gptbot.service.TelegramService;
@@ -14,18 +15,14 @@ import org.telegram.telegrambots.meta.api.methods.PartialBotApiMethod;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
-import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMember;
-import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
-import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException;
 
 import java.io.Serializable;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
 import static com.efedorchenko.gptbot.telegram.TelegramDistributor.Command.*;
-import static com.efedorchenko.gptbot.utils.logging.LogUtils.FUTURE_CHECK;
-import static com.efedorchenko.gptbot.utils.logging.LogUtils.LOGIC_MARKER;
 
 @Slf4j
 @Component
@@ -47,23 +44,25 @@ public class TelegramDistributor {
      */
     private final Function<String, SendMessage> unsupportedCommandReact;
 
-    private final UserModeRedisService userModeCache;
     private final TelegramService telegramService;
-    private final DefaultBotAnswer defaultBotAnswer;
     private final TelegramExecutor telegramExecutor;
+    private final DefaultBotAnswer defaultBotAnswer;
+    private final UserModeRedisService userModeCache;
+    private final TelegramProperties telegramProperties;
 
-    private static final String TEST_CHANNEL_FOR_SUB = "@qwerty123456789qwertyqwerty";
-    private static final String CHANNEL_FOR_SUB_CHILDREN = "@neuroncenterchildren";
-    private static final String CHANNEL_FOR_SUB_ADULTS = "@neuroncenteradults";
     private static final Set<String> RIGHT_STATUSES = Set.of("creator", "administrator", "member", "restricted");
 
     public TelegramDistributor(UserModeRedisService userModeCache,
                                HistoryRedisService historyCache,
                                TelegramService telegramService,
-                               DefaultBotAnswer defaultBotAnswer, TelegramExecutor telegramExecutor) {
+                               DefaultBotAnswer defaultBotAnswer,
+                               TelegramExecutor telegramExecutor,
+                               TelegramProperties telegramProperties) {
         this.userModeCache = userModeCache;
         this.telegramService = telegramService;
         this.defaultBotAnswer = defaultBotAnswer;
+        this.telegramProperties = telegramProperties;
+        this.telegramExecutor = telegramExecutor;
 
         this.unsupportedCommandReact = chatId -> new SendMessage(chatId, defaultBotAnswer.unknownCommand());
         this.commandReactMap = Map.of(
@@ -81,7 +80,6 @@ public class TelegramDistributor {
                     return new SendMessage(chatId, defaultBotAnswer.yaartCommand());
                 }
         );
-        this.telegramExecutor = telegramExecutor;
     }
 
     /**
@@ -93,15 +91,16 @@ public class TelegramDistributor {
      * @return готовый объект для возврата юзеру или {@code null}, если не нужно ничего возвращать
      */
     @Log
-    public @Nullable PartialBotApiMethod<? extends Serializable> distribute(Update update) {
+    @Nullable
+    public PartialBotApiMethod<? extends Serializable> distribute(Update update) {
 
         Message inMess = update.getMessage();
         String chatId = String.valueOf(inMess.getChatId());
 
 //        Проверка подписок на каналы
-        if (!checkSubscribes(inMess.getChatId())) {   // TODO 29.08.2024 22:08: Кешировать или запускать асинхронно
-            return new SendMessage(chatId, defaultBotAnswer.subscribeForUse());
-        }
+        CompletableFuture<Boolean> isSubscribeFuture =
+                CompletableFuture.supplyAsync(() -> checkSubscribes(inMess.getChatId()));
+
 //        На закрепление сообщения ничего не делаем
         if (inMess.getPinnedMessage() != null) {
             return null;
@@ -124,33 +123,28 @@ public class TelegramDistributor {
         }
 
 //        Main processing
-        return telegramService.processing(currentMode, update);
+        PartialBotApiMethod<? extends Serializable> processingResult = telegramService.processing(currentMode, update);
+        return isSubscribeFuture.join() ? processingResult : new SendMessage(chatId, defaultBotAnswer.subscribeForUse());
     }
 
     private boolean checkSubscribes(long chatId) {
-        try {
-            ChatMember adultMember = telegramExecutor.checkSubscribes(chatId, CHANNEL_FOR_SUB_ADULTS);
-            if (RIGHT_STATUSES.contains(adultMember.getStatus())) {
-                return true;
-            }
-            ChatMember childMember = telegramExecutor.checkSubscribes(chatId, CHANNEL_FOR_SUB_CHILDREN);
-            return RIGHT_STATUSES.contains(childMember.getStatus());
 
-            /* administrator (администратор канала)
-             * kicked        (выгнан с канала)
-             * left          (не подписан/покинул самостоятельно)
-             * member        (участник канала)
-             * creator       (создатель канала)
-             * restricted    (доступ ограничен) */
-
-        } catch (TelegramApiRequestException tare) {
-            log.error(FUTURE_CHECK, "TelegramApiRequestException was thrown because the bot is not an admin of the channels that the subscription is for. Skipped, access to the bot is open. Cause: {}", tare.getMessage());
-        } catch (TelegramApiException ex) {
-            log.error(LOGIC_MARKER, "TelegramApiException was thrown. Ex: ", ex);
-        } catch (Exception ex) {
-            log.error(LOGIC_MARKER, "Unknown exception was thrown. Skipped, access to the bot is open. Ex: ", ex);
+        String adultChannelStatus =
+                telegramExecutor.checkSubscribesPositive(chatId, telegramProperties.getAccessChannelAdults());
+        if (RIGHT_STATUSES.contains(adultChannelStatus)) {
+            return true;
         }
-        return true;
+        String childMemberStatus =
+                telegramExecutor.checkSubscribesPositive(chatId, telegramProperties.getAccessChannelChildren());
+        return RIGHT_STATUSES.contains(childMemberStatus);
+
+        /* administrator (администратор канала)
+         * kicked        (выгнан с канала)
+         * left          (не подписан/покинул самостоятельно)
+         * member        (участник канала)
+         * creator       (создатель канала)
+         * restricted    (доступ ограничен) */
+
     }
 
     @Getter

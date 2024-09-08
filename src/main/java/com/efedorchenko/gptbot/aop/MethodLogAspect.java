@@ -10,11 +10,9 @@ import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -27,8 +25,6 @@ import java.util.stream.IntStream;
 @RequiredArgsConstructor
 public class MethodLogAspect {
 
-    @Value("${logging.max-mess-length}")
-    private int maxLength;
     private final ExecutorService executorServiceOfVirtual;
     private final LogUtils logUtils;
 
@@ -45,30 +41,27 @@ public class MethodLogAspect {
 
             paramsForLogFuture = CompletableFuture.supplyAsync(() -> {
 
-                Object[] params = joinPoint.getArgs();
-                List<Integer> excludedIdxs = Arrays.stream(log.exclude()).boxed().toList();
+                List<Object> methodParams = Arrays.asList(joinPoint.getArgs());
+                List<Integer> excludes = Arrays.stream(log.exclude()).boxed().toList();
 
-                List<Object> paramsForLog = new ArrayList<>();
-                IntStream.range(0, params.length)
-                        .forEach(i -> {
-                            if (!excludedIdxs.contains(i)) {
-                                paramsForLog.add(params[i]);
-                            }
-                        });
-                return paramsForLog;
+                return IntStream.range(0, methodParams.size())
+                        .filter(i -> !excludes.contains(i))
+                        .mapToObj(methodParams::get)
+                        .toList();
+
             }, executorServiceOfVirtual);
         }
 
         try {
             Object result = joinPoint.proceed();
             if (enabledForLevel) {
-                logUtils.doLogMethodAsyncForSomeoneElse(paramsForLogFuture, result, logger, log, maxLength);
+                logUtils.doLogMethodAsyncForSomeone(paramsForLogFuture, result, logger, log);
             }
             return result;
 
         } catch (Throwable ex) {
             if (enabledForLevel) {
-                logUtils.doLogMethodAsyncForSomeoneElse(paramsForLogFuture, ex, logger, log, maxLength);
+                logUtils.doLogMethodAsyncForSomeone(paramsForLogFuture, ex, logger, log);
             }
             throw ex;
         }

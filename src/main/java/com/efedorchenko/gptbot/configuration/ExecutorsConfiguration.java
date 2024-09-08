@@ -1,6 +1,7 @@
 package com.efedorchenko.gptbot.configuration;
 
 import com.efedorchenko.gptbot.configuration.properties.ExecutorProperties;
+import org.slf4j.MDC;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -8,6 +9,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -36,8 +38,21 @@ public class ExecutorsConfiguration {
     }
 
     @Bean
-    public ExecutorService executorServiceOfVirtual(VirtualThreadFactory threadFactory) {
-        return Executors.newThreadPerTaskExecutor(threadFactory);
+    public ExecutorService executorServiceOfVirtual() {
+        return Executors.newThreadPerTaskExecutor(srcRunnable -> {   // Only for thread per task
+            Map<String, String> parentContext = MDC.getCopyOfContextMap();
+            Runnable decoratedRunnable = () -> {
+                if (parentContext != null) {
+                    MDC.setContextMap(parentContext);
+                }
+                try {
+                    srcRunnable.run();
+                } finally {
+                    MDC.clear();
+                }
+            };
+            return Thread.ofVirtual().unstarted(decoratedRunnable);
+        });
     }
 
     @Bean

@@ -13,7 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
-import org.slf4j.MDC;
+import org.slf4j.event.Level;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -29,6 +29,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 
 import static com.efedorchenko.gptbot.utils.logging.LogUtils.FUTURE_CHECK;
+import static com.efedorchenko.gptbot.utils.logging.LogUtils.LOGIC_MARKER;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -36,7 +37,7 @@ import static com.efedorchenko.gptbot.utils.logging.LogUtils.FUTURE_CHECK;
 public class YandexGptService implements AiModelService<GptRequestBody, GptAnswer> {
 
     public static final String SERVICE_NAME = "YandexGptService";
-    private static final int MAX_COUNT_SYMBOLS = 3700;
+    private static final int MAX_COUNT_SYMBOLS = 3500;
     private static final long REQUIRED_MILLIS_BETWEEN_REQS = 500L;
     private static Long exitTime;
 
@@ -58,6 +59,7 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
     }
 
     @Override
+    @Log(level = Level.TRACE)
     public GptRequestBody prepareRequest(Message inputMess) {
 
         GptMessageUnit question = new GptMessageUnit(GptMessageUnit.Role.USER.getRole(), inputMess.getText());
@@ -74,8 +76,8 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
                 .build();
     }
 
-    @Log
     @Override
+    @Log(level = Level.TRACE)
     public Optional<GptAnswer> buildAndExecutePost(String url, Serializable requestBody, Class<GptAnswer> responseType)
             throws IOException {
 
@@ -85,7 +87,6 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
                 .url(url)
                 .header(HttpHeaders.CONTENT_TYPE, org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + IamTokenSupplier.IAM_TOKEN)
-                .header(YandexProperties.YA_RQUID_HEADER_NAME, MDC.get("RqUID"))
                 .header(YandexProperties.FOLDER_ID_HEADER_NAME, yandexProperties.getFolderId())
                 .post(RequestBody.create(serializedBody, OkHttpClientConfiguration.MT_APPLICATION_JSON))
                 .build();
@@ -130,8 +131,8 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
         }
     }
 
-    @Log(result = false)
     @Override
+    @Log(level = Level.TRACE)
     public PartialBotApiMethod<? extends Serializable> responseProcess(GptAnswer response, Message sourceMess) {
 
         String chatId = String.valueOf(sourceMess.getChatId());
@@ -140,13 +141,13 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
         if (errorHttpStatus != null) {
             return new SendMessage(chatId, defaultBotAnswer.yagptAnswerOfStatus(errorHttpStatus));
         }
+
+        if (response.getResult() == null) {
+            log.error(LOGIC_MARKER, "answer is null. Response: {}", response);
+            return new SendMessage(chatId, defaultBotAnswer.unknownError());
+        }
         GptMessageUnit answer = response.getResult().getAlternatives().getLast().getMessage();
-
-        CompletableFuture.runAsync(
-                () -> historyCache.addMessage(chatId, answer),
-                executorServiceOfVirtual
-        );
-
+        CompletableFuture.runAsync(() -> historyCache.addMessage(chatId, answer), executorServiceOfVirtual);
         return new SendMessage(chatId, answer.getText());
     }
 
