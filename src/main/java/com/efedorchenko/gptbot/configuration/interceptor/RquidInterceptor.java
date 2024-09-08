@@ -31,7 +31,7 @@ public class RquidInterceptor implements Interceptor, Ordered {
         Request request = chain.request();
 
         Request newRequest = request.newBuilder()
-                .addHeader(MdcConfigurer.RQUID, rquid)
+                .addHeader("x-request-id", rquid)
                 .build();
 
         return chain.proceed(newRequest);

@@ -42,17 +42,17 @@ public class ExecutorsConfiguration {
         return Executors.newThreadPerTaskExecutor(srcRunnable -> {   // Only for thread per task
             Map<String, String> parentContext = MDC.getCopyOfContextMap();
             Runnable decoratedRunnable = () -> {
-                        if (parentContext != null) {
-                            MDC.setContextMap(parentContext);
-                        }
-                        try {
-                            srcRunnable.run();
-                        } finally {
-                            MDC.clear();
-                        }
-                    };
-                    return Thread.ofVirtual().unstarted(decoratedRunnable);
-                });
+                if (parentContext != null) {
+                    MDC.setContextMap(parentContext);
+                }
+                try {
+                    srcRunnable.run();
+                } finally {
+                    MDC.clear();
+                }
+            };
+            return Thread.ofVirtual().unstarted(decoratedRunnable);
+        });
     }
 
     @Bean

@@ -91,7 +91,8 @@ public class TelegramDistributor {
      * @return готовый объект для возврата юзеру или {@code null}, если не нужно ничего возвращать
      */
     @Log
-    public @Nullable PartialBotApiMethod<? extends Serializable> distribute(Update update) {
+    @Nullable
+    public PartialBotApiMethod<? extends Serializable> distribute(Update update) {
 
         Message inMess = update.getMessage();
         String chatId = String.valueOf(inMess.getChatId());

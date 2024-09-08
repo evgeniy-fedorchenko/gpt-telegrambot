@@ -111,7 +111,8 @@ public class TelegramExecutor extends DefaultAbsSender {
      * @param messToSend сообщение для отправки
      * @return успешно отправленное сообщение
      */
-    public @Nullable Message sendAndReturn(SendMessage messToSend) {
+    @Nullable
+    public Message sendAndReturn(SendMessage messToSend) {
         try {
             return execute(messToSend);
         } catch (TelegramApiException ex) {
