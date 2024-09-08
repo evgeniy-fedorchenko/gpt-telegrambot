@@ -14,7 +14,6 @@ import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
 import org.slf4j.MDC;
-import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.Chat;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -63,12 +62,12 @@ public class MdcConfigurer {
     public Object mdcConfigure(ProceedingJoinPoint joinPoint) throws Throwable {
 
         if (joinPoint.getArgs()[0] instanceof Update update) {
-            Pair<String, MdcUser> context = extractContext(update);
+            MdcUser user = extractUser(update);
 
             String randomUuid = UUID.randomUUID().toString();
-            if (context != null) {
-                MDC.put(RQUID, randomUuid.substring(0, 14) + context.getFirst());
-                MDC.put(MDC_USER, context.getSecond().toString());
+            if (user != null) {
+                MDC.put(RQUID, randomUuid.substring(0, 14) + user.getId());
+                MDC.put(MDC_USER, user.toString());
 
             } else {
                 log.warn("User for MDC not detected. Use random UUID instead. Update {}", update);
@@ -83,36 +82,34 @@ public class MdcConfigurer {
         }
     }
 
-    public @Nullable Pair<String, MdcUser> extractContext(Update update) {
+    @Nullable
+    public MdcUser extractUser(Update update) {
         if (update.hasMessage() && update.getMessage().getFrom() != null) {
             User user = update.getMessage().getFrom();
-            String chatId = String.valueOf(user.getId());
-            MdcUser mdcUser = MdcUser.builder().id(chatId)
+            return MdcUser.builder()
+                    .id(String.valueOf(user.getId()))
                     .firstname(user.getFirstName())
                     .lastname(user.getLastName())
                     .username(user.getUserName())
                     .build();
-            return Pair.of(chatId, mdcUser);
 
         } else if (update.hasMessage() && update.getMessage().getChat() != null) {
             Chat chat = update.getMessage().getChat();
-            String chatId = String.valueOf(chat.getId());
-            MdcUser mdcUser = MdcUser.builder().id(chatId)
+            return MdcUser.builder()
+                    .id(String.valueOf(chat.getId()))
                     .firstname(chat.getFirstName())
                     .lastname(chat.getLastName())
                     .username(chat.getUserName())
                     .build();
-            return Pair.of(chatId, mdcUser);
 
         } else if (update.hasCallbackQuery() && update.getCallbackQuery().getFrom() != null) {
             User user = update.getCallbackQuery().getFrom();
-            String chatId = String.valueOf(user.getId());
-            MdcUser mdcUser = MdcUser.builder().id(chatId)
+            return MdcUser.builder()
+                    .id(String.valueOf(user.getId()))
                     .firstname(user.getFirstName())
                     .lastname(user.getLastName())
                     .username(user.getUserName())
                     .build();
-            return Pair.of(chatId, mdcUser);
 
         } else {
             return null;
@@ -159,7 +156,8 @@ public class MdcConfigurer {
          * @param src исходная строка, которая будет преобразована в объект {@link MdcConfigurer.MdcUser}
          * @return сформированный POJO или {@code null}, если не удалось собрать объект из предоставленной строки
          */
-        public static @Nullable MdcUser fromString(String src) { // So much faster than as ObjectMapper
+        @Nullable
+        public static MdcUser fromString(String src) { // So much faster than as ObjectMapper
             try {
                 String[] split = src.replaceAll("\\s|\\n|\\r|\\{|}|\"", "").split(",");
                 return MdcUser.builder()
