@@ -14,6 +14,8 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.util.Objects;
+import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -21,11 +23,14 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class LoggingInterceptor implements Interceptor, Ordered {
 
+    private static final Set<String> secretHeaders = Set.of("authorization", "x-folder-id");
+    private static final Set<String> secretBodyParts = Set.of("iamToken", "yandexPassportOauthToken", "x-folder-id");
+
     private final LogUtils logUtils;
 
     @Override
     public int getOrder() {
-        return 1;
+        return 2;
     }
 
     /**
@@ -36,7 +41,7 @@ public class LoggingInterceptor implements Interceptor, Ordered {
      * @throws IOException если {@code chain.proceed(request)} выбрасывает соответствующее исключение
      */
     @NotNull
-//    @Override
+    @Override
     public Response intercept(@NotNull Chain chain) throws IOException {
 
         Request request = chain.request();
@@ -52,24 +57,32 @@ public class LoggingInterceptor implements Interceptor, Ordered {
         if (!log.isTraceEnabled()) {
             return response;
         }
-        ResponseBody body = response.peekBody(Long.MAX_VALUE);
-        String bodyString = body.string();
+        try {
+            ResponseBody body = response.peekBody(Long.MAX_VALUE);
+            String bodyString = body.string();
 
-        log.trace("\nStatus        : {}\nHeaders       : {}\nResponse body : {}",
-                response.code() + " (" + (response.receivedResponseAtMillis() - response.sentRequestAtMillis()) + " ms)",
-                formatHeaders(response.headers()), formatBody(bodyString, response.header(HttpHeaders.CONTENT_TYPE)));
-        return response.newBuilder()
-                .body(ResponseBody.create(bodyString, body.contentType()))
-                .build();
+            log.trace("\nStatus        : {}\nHeaders       : {}\nResponse body : {}",
+                    response.code() + " (" + (response.receivedResponseAtMillis() - response.sentRequestAtMillis()) + " ms)",
+                    formatHeaders(response.headers()), formatBody(bodyString, response.header(HttpHeaders.CONTENT_TYPE)));
+            return response.newBuilder()
+                    .body(ResponseBody.create(bodyString, body.contentType()))
+                    .build();
+        } catch (IOException ioe) {
+            log.warn("Cannot intercept response body");
+            return response;
+        }
     }
 
     private String formatHeaders(Headers headers) {
         return "[" + headers.toMultimap().entrySet().stream()
-                .map(e -> e.getKey() + ": \"" + String.join("\", \"", e.getValue()) + "\"")
+                .map(e -> e.getKey() + ": \"" +
+                          (secretHeaders.contains(e.getKey()) ? "*****" : String.join("\", \"", e.getValue())) +
+                          "\"")
                 .collect(Collectors.joining(", ")) + "]";
     }
 
-    private @NotNull String extractBody(Request request) {
+    @NotNull
+    private String extractBody(Request request) {
         if (request.body() == null) {
             return "absent";
         }
@@ -83,10 +96,24 @@ public class LoggingInterceptor implements Interceptor, Ordered {
         }
     }
 
-    private @NotNull String formatBody(@Nullable String body, @Nullable String header) {
+    @NotNull
+    private String formatBody(@Nullable String body, @Nullable String header) {
         if (body == null || body.isEmpty() || body.equals("absent")) {
             return "absent";
         }
-        return Objects.equals(header, MediaType.APPLICATION_OCTET_STREAM_VALUE) ? "binary" : logUtils.format(body);
+        body = Objects.equals(header, MediaType.APPLICATION_OCTET_STREAM_VALUE) ? "binary" : logUtils.format(body);
+        if (body.equals("binary")) {
+            return body;
+        }
+
+        String regex = secretBodyParts.stream()
+                .map(Pattern::quote)
+                .reduce((a, b) -> a + "|" + b)  // Объединение всех ключей через |
+                .map(parts -> "\"(" + parts + ")\":\"[\\\\.a-zA-Z0-9-_]+\"")
+                .orElse("");
+        if (!regex.isEmpty()) {
+            body = body.replaceAll(regex, "\"$1\":\"*****\"");
+        }
+        return body;
     }
 }
