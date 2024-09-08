@@ -142,6 +142,10 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
             return new SendMessage(chatId, defaultBotAnswer.yagptAnswerOfStatus(errorHttpStatus));
         }
 
+        if (response.getResult() == null) {
+            log.error(LOGIC_MARKER, "answer is null. Response: {}", response);
+            return new SendMessage(chatId, defaultBotAnswer.unknownError());
+        }
         GptMessageUnit answer = response.getResult().getAlternatives().getLast().getMessage();
         CompletableFuture.runAsync(() -> historyCache.addMessage(chatId, answer), executorServiceOfVirtual);
         return new SendMessage(chatId, answer.getText());
