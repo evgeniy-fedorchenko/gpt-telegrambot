@@ -32,7 +32,7 @@ public class TelegramUpdateHandler {
                         }, () -> log.debug(FINISHED_NORMALLY_NULL, update.getUpdateId()));
 
             } catch (Throwable t) {
-                log.error(FILED_UNHANDLED, update.getUpdateId(), t);
+                log.error(LOGIC_MARKER, FILED_UNHANDLED, update.getUpdateId(), t);
             }
 
         } else {

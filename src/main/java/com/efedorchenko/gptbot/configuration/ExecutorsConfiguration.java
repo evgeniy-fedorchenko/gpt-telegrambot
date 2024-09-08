@@ -59,4 +59,5 @@ public class ExecutorsConfiguration {
     public ScheduledExecutorService singleThreadScheduledExecutorService() {
         return Executors.newScheduledThreadPool(1);
     }
+
 }
