@@ -57,7 +57,7 @@
         <sql>
 --             ALTER TABLE users ADD CONSTRAINT created_at_not_future    CHECK (current_timestamp >= created_at);
 --             ALTER TABLE users ADD CONSTRAINT last_modified_not_future CHECK (current_timestamp >= last_modified);
-            ALTER TABLE users ADD CONSTRAINT username_min_len         CHECK (length(username) >= 5);
+            ALTER TABLE users ADD CONSTRAINT username_min_len         CHECK (username is null or length(username) >= 5);
             ALTER TABLE users ADD CONSTRAINT username_pattern         CHECK (username ~ '[A-Aa-z0-9_]');
 
             ALTER TABLE users ADD CONSTRAINT yagpt_reqs_total  CHECK (yagpt_reqs_total >= 0);
