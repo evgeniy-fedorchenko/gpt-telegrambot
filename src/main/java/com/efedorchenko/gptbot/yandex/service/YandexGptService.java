@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.event.Level;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -38,7 +39,7 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
 
     public static final String SERVICE_NAME = "YandexGptService";
     private static final int MAX_COUNT_SYMBOLS = 3500;
-    private static final long REQUIRED_MILLIS_BETWEEN_REQS = 500L;
+    private static final long REQUIRED_MILLIS_BETWEEN_REQS = 1000L;
     private static final Semaphore requestSemaphore = new Semaphore(5, true);
 
     private final OkHttpClient httpClient;
@@ -57,7 +58,7 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
     }
 
     @Override
-    @Log(level = Level.TRACE)
+    @Log(Level.TRACE)
     public GptRequestBody prepareRequest(Message inputMess) {
 
         GptMessageUnit question = new GptMessageUnit(GptMessageUnit.Role.USER.getRole(), inputMess.getText());
@@ -75,7 +76,7 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
     }
 
     @Override
-    @Log(level = Level.TRACE)
+    @Log(Level.TRACE)
     public Optional<GptAnswer> buildAndExecutePost(String url, Serializable requestBody, Class<GptAnswer> responseType)
             throws IOException {
 
@@ -89,20 +90,7 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
                 .post(RequestBody.create(serializedBody, OkHttpClientConfiguration.MT_APPLICATION_JSON))
                 .build();
 
-        Response response = null;
-        try {
-
-            try {
-                Call call = httpClient.newCall(request);
-                requestSemaphore.acquire();
-                response = call.execute();
-                Thread.sleep(REQUIRED_MILLIS_BETWEEN_REQS);
-
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            } finally {
-                requestSemaphore.release();
-            }
+        try (Response response = doExecuteControlSpeed(request)) {
 
             if (response == null || response.code() == HttpStatus.TOO_MANY_REQUESTS.value()) {
                 return Optional.of(GptAnswer.builder().errorHttpStatus(HttpStatus.TOO_MANY_REQUESTS).build());
@@ -110,16 +98,11 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
             return response.body() != null
                     ? Optional.of(objectMapper.readValue(response.body().string(), responseType))
                     : Optional.of(GptAnswer.builder().errorHttpStatus(HttpStatus.BAD_GATEWAY).build());
-
-        } finally {
-            if (response != null) {
-                response.close();
-            }
         }
     }
 
     @Override
-    @Log(level = Level.TRACE)
+    @Log(Level.TRACE)
     public PartialBotApiMethod<? extends Serializable> responseProcess(GptAnswer response, Message sourceMess) {
 
         String chatId = String.valueOf(sourceMess.getChatId());
@@ -146,5 +129,32 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
     @Override
     public Class<GptAnswer> getResponseType() {
         return GptAnswer.class;
+    }
+
+    @Nullable
+    private Response doExecuteControlSpeed(Request request) throws IOException {
+
+        try {
+
+        /* Если модель полностью загружена (обрабатывает 5 запросов сразу), то после получения ответа на один
+           из запросов необходимо выждать немного, так как на стороне Яндекса запрос освобождается не сразу */
+            boolean needsWait = false;
+            Call call = httpClient.newCall(request);
+
+            if (requestSemaphore.availablePermits() == 0) {
+                needsWait = true;
+            }
+            requestSemaphore.acquire();
+            if (needsWait) {
+                Thread.sleep(REQUIRED_MILLIS_BETWEEN_REQS);
+            }
+            return call.execute();
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return null;
+        } finally {
+            requestSemaphore.release();
+        }
     }
 }

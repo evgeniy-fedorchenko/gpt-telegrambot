@@ -112,7 +112,7 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
     }
 
     @Override
-    @Log(level = Level.TRACE)
+    @Log(Level.TRACE)
     public ArtRequestBody prepareRequest(Message inputMess) {
 
         userModeCache.setMode(inputMess.getChatId(), Mode.YANDEX_ART_HOLD);
@@ -124,7 +124,7 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
     }
 
     @Override
-    @Log(level = Level.TRACE)
+    @Log(Level.TRACE)
     public Optional<ArtAnswer> buildAndExecutePost(String url, Serializable requestBody, Class<ArtAnswer> responseType)
             throws IOException {
 
@@ -146,7 +146,7 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
     }
 
     @Override
-    @Log(level = Level.TRACE)
+    @Log(Level.TRACE)
     public PartialBotApiMethod<? extends Serializable> responseProcess(ArtAnswer firstResponse, Message sourceMess) {
 
         String chatId = String.valueOf(sourceMess.getChatId());
