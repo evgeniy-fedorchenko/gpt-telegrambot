@@ -132,7 +132,11 @@ public class TelegramExecutor extends DefaultAbsSender {
         }
     }
 
-    @Cacheable(cacheNames = RedisConfiguration.USER_IS_SUB_CACHE_NAME, key = "#chatId")
+    @Cacheable(
+            cacheNames = RedisConfiguration.USER_IS_SUB_CACHE_NAME,
+            key = "#chatId",
+            condition = "#result != null && @telegramDistributor.rightStatuses.contains(#result)"
+    )
     public String checkSubscribesPositive(long chatId, String channelLink) {
 
         try {

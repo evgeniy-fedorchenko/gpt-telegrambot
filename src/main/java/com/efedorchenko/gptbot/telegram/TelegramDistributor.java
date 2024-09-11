@@ -50,7 +50,8 @@ public class TelegramDistributor {
     private final UserModeRedisService userModeCache;
     private final TelegramProperties telegramProperties;
 
-    private static final Set<String> RIGHT_STATUSES = Set.of("creator", "administrator", "member", "restricted");
+     public final Set<String> rightStatuses = Set.of("creator", "administrator", "member", "restricted");
+
 
     public TelegramDistributor(UserModeRedisService userModeCache,
                                HistoryRedisService historyCache,
@@ -131,12 +132,12 @@ public class TelegramDistributor {
 
         String adultChannelStatus =
                 telegramExecutor.checkSubscribesPositive(chatId, telegramProperties.getAccessChannelAdults());
-        if (RIGHT_STATUSES.contains(adultChannelStatus)) {
+        if (rightStatuses.contains(adultChannelStatus)) {
             return true;
         }
         String childMemberStatus =
                 telegramExecutor.checkSubscribesPositive(chatId, telegramProperties.getAccessChannelChildren());
-        return RIGHT_STATUSES.contains(childMemberStatus);
+        return rightStatuses.contains(childMemberStatus);
 
         /* administrator (администратор канала)
          * kicked        (выгнан с канала)
