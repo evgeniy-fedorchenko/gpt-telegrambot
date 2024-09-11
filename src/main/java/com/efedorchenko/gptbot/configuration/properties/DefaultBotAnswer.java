@@ -13,6 +13,7 @@ public class DefaultBotAnswer {
 
     @Value("${app.version}")
     private String appVersion;
+    private final TelegramProperties telegramProperties;
 
     private final Properties defaultBotAnswers;
 
@@ -72,7 +73,8 @@ public class DefaultBotAnswer {
         return defaultBotAnswers.getProperty(OTHERS_KEY + "voice_is_longer_than_30s");
     }
     public String subscribeForUse() {
-        return defaultBotAnswers.getProperty(OTHERS_KEY + "subscribe_for_use");
+        return defaultBotAnswers.getProperty(OTHERS_KEY + "subscribe_for_use")
+                .formatted(telegramProperties.getAccessChannelChildren(), telegramProperties.getAccessChannelAdults());
     }
 
 
