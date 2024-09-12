@@ -160,7 +160,7 @@ public class TelegramService {
                 return new SendMessage(chatId, defaultBotAnswer.otherEx());
             }
             case GptTelegramBotException gtbe -> {
-                log.error(LOGIC_MARKER, gtbe.getMessage(), update, thrown);
+                log.error(LOGIC_MARKER, "GptTelegramBotException. Mess: {}\nUpdate: {}\nCause: ", gtbe.getMessage(), update, gtbe.getCause());
                 return new SendMessage(chatId, defaultBotAnswer.otherEx());
             }
             default -> {

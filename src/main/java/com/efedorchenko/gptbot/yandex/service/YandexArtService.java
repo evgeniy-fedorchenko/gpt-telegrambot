@@ -201,11 +201,11 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
                 return objectMapper.readValue(response.body().string(), ArtAnswer.class);
             }
 
-        } catch (JsonProcessingException ex) {
-            throw new GptTelegramBotException("Request was successful, but it wasn't possible to deserialize the response into an object of the \"%s\" class. Ex:{}".formatted(ArtAnswer.class), ex);
+        } catch (JsonProcessingException jpe) {
+            throw new GptTelegramBotException("Request was successful, but it wasn't possible to deserialize the response into an object of the \"%s\" class. Ex:{}".formatted(ArtAnswer.class), jpe);
 
-        } catch (IOException e) {
-            throw new GptTelegramBotException("Cannot execute call of the request or read response body");
+        } catch (IOException ioe) {
+            throw new GptTelegramBotException("Cannot execute call of the request or read response body", ioe);
         }
     }
 
