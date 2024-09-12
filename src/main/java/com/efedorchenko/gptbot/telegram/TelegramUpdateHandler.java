@@ -14,13 +14,16 @@ import static com.efedorchenko.gptbot.utils.logging.LogUtils.*;
 @RequiredArgsConstructor
 public class TelegramUpdateHandler {
 
-    /* Spring java beans */
     private final TelegramExecutor telegramExecutor;
     private final TelegramDistributor telegramDistributor;
 
     public void handleUpdate(Update update) {
 
-        if (update != null && update.hasMessage()) {
+        if (update == null) {
+            return;
+        }
+
+        if (update.hasMessage()) {
 
             try {
                 log.debug(BEGUN, update.getUpdateId());
@@ -35,6 +38,8 @@ public class TelegramUpdateHandler {
                 log.error(LOGIC_MARKER, FILED_UNHANDLED, update.getUpdateId(), t);
             }
 
+        } else if (update.hasChannelPost()) {
+            log.trace("Post on the channel '{}'", update.getChannelPost().getChat().getTitle());
         } else {
             log.warn("Received unknown update: {}", update);
         }
