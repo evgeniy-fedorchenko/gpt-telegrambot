@@ -2,7 +2,6 @@ package com.efedorchenko.gptbot.aop;
 
 import com.efedorchenko.gptbot.data.BotUserRepository;
 import com.efedorchenko.gptbot.entity.BotUser;
-import com.efedorchenko.gptbot.utils.logging.LogUtils;
 import com.efedorchenko.gptbot.yandex.model.ArtAnswer;
 import com.efedorchenko.gptbot.yandex.model.GptAnswer;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +15,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Function;
@@ -41,96 +39,52 @@ public class StatsCollector {
     @AfterReturning(pointcut = "aiExecutingPointcut()", returning = "result")
     public Object collectAiUsesStats(Object result) {
 
-        String inner = UUID.randomUUID().toString().substring(30, 36);
-        log.trace(inner + "Collecting stats. Result: {}", result);
-        if ((result instanceof Optional<?> resultOpt && resultOpt.isPresent())) {
-
-            CompletableFuture.runAsync(() -> {
-
-
-                String mdcUserAsString = MDC.get(MdcConfigurer.MDC_USER);
-                log.trace(inner + " MdcUserAsString got from MDC. MdcUserAsString: {}", mdcUserAsString);
-                if (mdcUserAsString == null) {
-                    log.error(inner + LogUtils.LOGIC_MARKER, "mdcUser is null");
-                    return;
-                }
-                MdcConfigurer.MdcUser currentUser = MdcConfigurer.MdcUser.fromString(mdcUserAsString);
-                log.trace(inner + " MdcUser restored from string. currentUser: {}", currentUser);
-                if (currentUser == null) {
-                    log.error(inner + LogUtils.LOGIC_MARKER, "mdcUser can't recover from String!");
-
-
-                } else {
-                    log.trace(inner + " current user: {}", currentUser.toString().replaceAll("\n", ""));
-                    Optional<BotUser> botUserOpt = botUserRepository.findById(Long.valueOf(currentUser.getId()));
-                    BotUser botUser;
-
-
-                    if (botUserOpt.isEmpty()) {
-                        log.trace(inner + " User was not found in repository");
-                        botUser = new BotUser();
-                        botUser.setChatId(Long.parseLong(currentUser.getId()));
-                        botUser.setUsername(extractUsername(currentUser.getUsername()));   // nullable
-                        botUser.setName(extractName(currentUser));
-                        log.trace(inner + " create new user. User: {}", botUser);
-                    } else {
-//                        Если юзер изменил firstname/lastname/username
-                        botUser = botUserOpt.get();
-                        botUser.setUsername(extractUsername(currentUser.getUsername()));   // nullable
-                        botUser.setName(extractName(currentUser));
-                    }
-
-
-                    try {
-                        log.trace(inner + " " + resultOpt.get());
-                    } catch (Throwable ignored) {
-                    }
-
-
-                    switch (resultOpt.get()) {
-                        case GptAnswer gpt -> {
-                            int tokensSpent = Integer.parseInt(gpt.getResult().getUsage().getTotalTokens());
-                            botUser.setYagptReqsToday(botUser.getYagptReqsToday() + 1);
-                            botUser.setYagptReqsTotal(botUser.getYagptReqsTotal() + 1);
-                            botUser.setTokensSpentToday(botUser.getTokensSpentToday() + tokensSpent);
-                            botUser.setTokensSpentTotal(botUser.getTokensSpentTotal() + tokensSpent);
-                            log.trace(inner + " Complete case \"GptAnswer gpt\". BotUser: {}", botUser);
-                        }
-                        case ArtAnswer art -> {
-                            botUser.setYaartReqsToday(botUser.getYaartReqsToday() + 1);
-                            botUser.setYaartReqsTotal(botUser.getYaartReqsTotal() + 1);
-                            log.trace(inner + " Complete case \"ArtAnswer art\". BotUser: {}", botUser);
-
-                        }
-                        default -> log.info(inner + " Complete default case. BotUser: {}", botUser);
-                    }
-
-
-                    log.trace(inner + " user for save: {}", botUser);
-                    BotUser saved = null;
-                    try {
-                        saved = botUserRepository.save(botUser);
-                        log.trace(inner + " successfully saved user: {}", saved);
-                    } catch (Throwable throwable) {
-                        log.error(inner + " Throwable in repo.save. saved: {}", saved);
-                        log.error(inner + " Throwable in repo.save. Ex: ", throwable);
-
-                    }
-                    log.trace(inner + " complete collect stats");
-                }
-            }, executorServiceOfVirtual);
-
-
-        } else {
-            log.error(inner + LogUtils.LOGIC_MARKER, "Cannot get result. Result: {}", result);
+        if (!(result instanceof Optional<?> resultOpt && resultOpt.isPresent())) {
+            log.error("result in not instance of Optional<?> or is not present. Result: {}", result);
+            return result;
         }
+
+        CompletableFuture.runAsync(() ->
+                Optional.ofNullable(MDC.get(MdcConfigurer.MDC_USER))
+                        .map(MdcConfigurer.MdcUser::fromString)
+
+                        .ifPresent(mdcUser -> {
+
+//                      Только если result - это непустой Optional и в MDC есть юзер и его удалось восстановить из строки
+                            BotUser botUser = botUserRepository.findById(Long.parseLong(mdcUser.getId()))
+                                    .orElseGet(() -> {
+                                        BotUser botUser1 = new BotUser();
+                                        botUser1.setChatId(Long.parseLong(mdcUser.getId()));
+                                        return botUser1;
+                                    }).toBuilder()
+                                    .username(extractUsername(mdcUser.getUsername()))
+                                    .name(extractName(mdcUser))
+                                    .build();
+
+                            switch (resultOpt.get()) {
+                                case GptAnswer gpt -> {
+                                    int tokensSpent = Integer.parseInt(gpt.getResult().getUsage().getTotalTokens());
+                                    botUser.setYagptReqsToday(botUser.getYagptReqsToday() + 1);
+                                    botUser.setYagptReqsTotal(botUser.getYagptReqsTotal() + 1);
+                                    botUser.setTokensSpentToday(botUser.getTokensSpentToday() + tokensSpent);
+                                    botUser.setTokensSpentTotal(botUser.getTokensSpentTotal() + tokensSpent);
+                                }
+                                case ArtAnswer art -> {
+                                    botUser.setYaartReqsToday(botUser.getYaartReqsToday() + 1);
+                                    botUser.setYaartReqsTotal(botUser.getYaartReqsTotal() + 1);
+                                }
+                                default -> log.warn("Unknown answer: {}", resultOpt.get());
+                            }
+                            botUserRepository.save(botUser);
+
+                        }), executorServiceOfVirtual);
 
         return result;
     }
 
     @Nullable
     private String extractUsername(String username) {
-        return username == null || username.equals("null") ? null : username;
+        return username == null || "null".equals(username) ? null : username;
     }
 
     @Nullable
@@ -160,7 +114,6 @@ public class StatsCollector {
 
         String replacedFirstname = allowedSymbols.matcher(firstname).replaceAll("");
         String replacedLastName = allowedSymbols.matcher(lastname).replaceAll("");
-        String replacedAll = replacedFirstname + replacedLastName;
-        return replacedAll.isEmpty() ? null : replacedFirstname + " " + replacedLastName;
+        return (replacedFirstname + replacedLastName).isEmpty() ? null : replacedFirstname + " " + replacedLastName;
     }
 }
