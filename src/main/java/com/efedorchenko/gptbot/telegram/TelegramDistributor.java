@@ -50,7 +50,7 @@ public class TelegramDistributor {
     private final UserModeRedisService userModeCache;
     private final TelegramProperties telegramProperties;
 
-     public final Set<String> rightStatuses = Set.of("creator", "administrator", "member", "restricted");
+     public static final Set<String> rightStatuses = Set.of("creator", "administrator", "member", "restricted");
 
 
     public TelegramDistributor(UserModeRedisService userModeCache,
@@ -129,7 +129,6 @@ public class TelegramDistributor {
     }
 
     private boolean checkSubscribes(long chatId) {
-
         String adultChannelStatus =
                 telegramExecutor.checkSubscribesPositive(chatId, telegramProperties.getAccessChannelAdults());
         if (rightStatuses.contains(adultChannelStatus)) {
