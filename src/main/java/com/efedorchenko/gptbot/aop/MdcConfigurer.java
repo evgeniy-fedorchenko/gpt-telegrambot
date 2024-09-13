@@ -1,6 +1,7 @@
 package com.efedorchenko.gptbot.aop;
 
 import com.efedorchenko.gptbot.telegram.TelegramUpdateHandler;
+import com.efedorchenko.gptbot.utils.Helper;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotNull;
@@ -70,7 +71,7 @@ public class MdcConfigurer {
                 MDC.put(MDC_USER, user.toString());
 
             } else {
-                log.warn("User for MDC not detected. Use random UUID instead. Update {}", update);
+                log.warn("User for MDC not detected. Use random UUID instead. Update {}", Helper.write(update));
                 MDC.put(RQUID, randomUuid);
             }
         }

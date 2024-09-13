@@ -2,6 +2,7 @@ package com.efedorchenko.gptbot.telegram;
 
 import com.efedorchenko.gptbot.configuration.RedisConfiguration;
 import com.efedorchenko.gptbot.configuration.properties.TelegramProperties;
+import com.efedorchenko.gptbot.utils.logging.Log;
 import jakarta.annotation.Nullable;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
@@ -47,6 +48,7 @@ public class TelegramExecutor extends DefaultAbsSender {
      * @param method {@code @NotNull} Объект сообщения, готового к отправке
      * @return true, если сообщение было успешно отправлено, иначе false
      */
+    @Log
     public boolean send(PartialBotApiMethod<?> method) {
 
         boolean suc = true;

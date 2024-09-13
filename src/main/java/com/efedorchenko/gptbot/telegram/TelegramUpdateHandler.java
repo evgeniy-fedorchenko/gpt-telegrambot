@@ -1,5 +1,6 @@
 package com.efedorchenko.gptbot.telegram;
 
+import com.efedorchenko.gptbot.utils.Helper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -41,7 +42,7 @@ public class TelegramUpdateHandler {
         } else if (update.hasChannelPost()) {
             log.trace("Post on the channel '{}'", update.getChannelPost().getChat().getTitle());
         } else {
-            log.warn("Received unknown update: {}", update);
+            log.warn("Received unknown update: {}", Helper.write(update));
         }
     }
 
