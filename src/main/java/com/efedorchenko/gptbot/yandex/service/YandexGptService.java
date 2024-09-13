@@ -13,7 +13,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
-import org.slf4j.MDC;
+import org.jetbrains.annotations.Nullable;
+import org.slf4j.event.Level;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -27,8 +28,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Semaphore;
 
-import static com.efedorchenko.gptbot.utils.logging.LogUtils.FUTURE_CHECK;
+import static com.efedorchenko.gptbot.utils.logging.LogUtils.LOGIC_MARKER;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -36,18 +38,16 @@ import static com.efedorchenko.gptbot.utils.logging.LogUtils.FUTURE_CHECK;
 public class YandexGptService implements AiModelService<GptRequestBody, GptAnswer> {
 
     public static final String SERVICE_NAME = "YandexGptService";
-    private static final int MAX_COUNT_SYMBOLS = 3700;
-    private static final long REQUIRED_MILLIS_BETWEEN_REQS = 500L;
-    private static Long exitTime;
+    private static final int MAX_COUNT_SYMBOLS = 3500;
+    private static final long REQUIRED_MILLIS_BETWEEN_REQS = 1000L;
+    private static final Semaphore requestSemaphore = new Semaphore(5, true);
 
     private final OkHttpClient httpClient;
     private final ObjectMapper objectMapper;
     private final HistoryRedisService historyCache;
+    private final DefaultBotAnswer defaultBotAnswer;
     private final YandexProperties yandexProperties;
     private final ExecutorService executorServiceOfVirtual;
-
-    private final Object networkLock = new Object();
-    private final DefaultBotAnswer defaultBotAnswer;
 
     @Override
     public String validate(Message inputMess) {
@@ -58,6 +58,7 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
     }
 
     @Override
+    @Log(Level.TRACE)
     public GptRequestBody prepareRequest(Message inputMess) {
 
         GptMessageUnit question = new GptMessageUnit(GptMessageUnit.Role.USER.getRole(), inputMess.getText());
@@ -74,8 +75,8 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
                 .build();
     }
 
-    @Log
     @Override
+    @Log(Level.TRACE)
     public Optional<GptAnswer> buildAndExecutePost(String url, Serializable requestBody, Class<GptAnswer> responseType)
             throws IOException {
 
@@ -85,53 +86,23 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
                 .url(url)
                 .header(HttpHeaders.CONTENT_TYPE, org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + IamTokenSupplier.IAM_TOKEN)
-                .header(YandexProperties.YA_RQUID_HEADER_NAME, MDC.get("RqUID"))
                 .header(YandexProperties.FOLDER_ID_HEADER_NAME, yandexProperties.getFolderId())
                 .post(RequestBody.create(serializedBody, OkHttpClientConfiguration.MT_APPLICATION_JSON))
                 .build();
 
-        Response response = null;
-        Call call = httpClient.newCall(request);
-        try {
+        try (Response response = doExecuteControlSpeed(request)) {
 
-            /* Яндекс обрабатывает только один запрос в единицу времени. При перерыв между запросами
-               должен составлять минимум MIN_MILLIS_BETWEEN_REQS (количество времени в миллисекундах) */
-            synchronized (networkLock) {
-
-                Long entryTime = System.currentTimeMillis();
-                if (exitTime != null) {
-                    long timeDifference = entryTime - exitTime;
-                    if (timeDifference < REQUIRED_MILLIS_BETWEEN_REQS) {
-                        long expectationMillis = REQUIRED_MILLIS_BETWEEN_REQS - timeDifference;
-                        log.warn(FUTURE_CHECK, "Request queue detected. expectation: {}", expectationMillis);
-                        Thread.sleep(expectationMillis);
-                    }
-                }
-
-                response = call.execute();
-
-                exitTime = System.currentTimeMillis();
-                entryTime = null;   // GC help
-            }
-
-            if (response.code() == HttpStatus.TOO_MANY_REQUESTS.value()) {
+            if (response == null || response.code() == HttpStatus.TOO_MANY_REQUESTS.value()) {
                 return Optional.of(GptAnswer.builder().errorHttpStatus(HttpStatus.TOO_MANY_REQUESTS).build());
             }
             return response.body() != null
                     ? Optional.of(objectMapper.readValue(response.body().string(), responseType))
-                    : Optional.empty();
-
-        } catch (InterruptedException e) {
-            return Optional.of(GptAnswer.builder().errorHttpStatus(HttpStatus.BAD_GATEWAY).build());   // default error answer
-        } finally {
-            if (response != null) {
-                response.close();
-            }
+                    : Optional.of(GptAnswer.builder().errorHttpStatus(HttpStatus.BAD_GATEWAY).build());
         }
     }
 
-    @Log(result = false)
     @Override
+    @Log(Level.TRACE)
     public PartialBotApiMethod<? extends Serializable> responseProcess(GptAnswer response, Message sourceMess) {
 
         String chatId = String.valueOf(sourceMess.getChatId());
@@ -140,13 +111,13 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
         if (errorHttpStatus != null) {
             return new SendMessage(chatId, defaultBotAnswer.yagptAnswerOfStatus(errorHttpStatus));
         }
+
+        if (response.getResult() == null) {
+            log.error(LOGIC_MARKER, "answer is null. Response: {}", response);
+            return new SendMessage(chatId, defaultBotAnswer.unknownError());
+        }
         GptMessageUnit answer = response.getResult().getAlternatives().getLast().getMessage();
-
-        CompletableFuture.runAsync(
-                () -> historyCache.addMessage(chatId, answer),
-                executorServiceOfVirtual
-        );
-
+        CompletableFuture.runAsync(() -> historyCache.addMessage(chatId, answer), executorServiceOfVirtual);
         return new SendMessage(chatId, answer.getText());
     }
 
@@ -158,5 +129,32 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
     @Override
     public Class<GptAnswer> getResponseType() {
         return GptAnswer.class;
+    }
+
+    @Nullable
+    private Response doExecuteControlSpeed(Request request) throws IOException {
+
+        try {
+
+        /* Если модель полностью загружена (обрабатывает 5 запросов сразу), то после получения ответа на один
+           из запросов необходимо выждать немного, так как на стороне Яндекса запрос освобождается не сразу */
+            boolean needsWait = false;
+            Call call = httpClient.newCall(request);
+
+            if (requestSemaphore.availablePermits() == 0) {
+                needsWait = true;
+            }
+            requestSemaphore.acquire();
+            if (needsWait) {
+                Thread.sleep(REQUIRED_MILLIS_BETWEEN_REQS);
+            }
+            return call.execute();
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return null;
+        } finally {
+            requestSemaphore.release();
+        }
     }
 }

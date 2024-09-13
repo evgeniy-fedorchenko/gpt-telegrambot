@@ -5,8 +5,8 @@ import com.efedorchenko.gptbot.data.UserModeRedisService;
 import com.efedorchenko.gptbot.exception.GptTelegramBotException;
 import com.efedorchenko.gptbot.exception.RetryAttemptNotReadyException;
 import com.efedorchenko.gptbot.telegram.Mode;
-import com.efedorchenko.gptbot.telegram.TelegramBot;
 import com.efedorchenko.gptbot.telegram.TelegramExecutor;
+import com.efedorchenko.gptbot.utils.Helper;
 import com.efedorchenko.gptbot.utils.logging.Log;
 import com.efedorchenko.gptbot.yandex.model.SpeechKitAnswer;
 import com.efedorchenko.gptbot.yandex.model.VoiceRecResult;
@@ -55,14 +55,13 @@ public class TelegramService {
     private final ApplicationContext applicationContext;
     private final ExecutorService executorServiceOfVirtual;
 
-    @Log(result = false)   // result логируется методом, стоящим выше по стеку
+    @Log
     public <REQ extends Serializable, RESP> PartialBotApiMethod<? extends Serializable> processing(
             Mode currentMode, Update update) {
 
         Message inMess = update.getMessage();
         String chatId = String.valueOf(inMess.getChatId());
         Future<?> future = scheduleChatAction(chatId, currentMode);
-        TelegramBot.localUser.set(inMess.getFrom());
 
         try {
             AiModelService<REQ, RESP> aiModelService = getAiModelService(currentMode);
@@ -89,7 +88,6 @@ public class TelegramService {
 
         } finally {
             future.cancel(true);
-            TelegramBot.localUser.remove();
             if (userModeCache.getMode(chatId).equals(Mode.YANDEX_ART_HOLD)) {
                 userModeCache.setMode(chatId, Mode.YANDEX_ART);
             }
@@ -139,11 +137,11 @@ public class TelegramService {
 
         switch (thrown) {
             case IllegalStateException ise -> {
-                log.error(NETWORK_MARKER, "IllegalStateException -> Update: {}\nEx: ", update, ise);
+                log.error(NETWORK_MARKER, "IllegalStateException -> Update: {}\nEx: ", Helper.write(update), ise);
                 return new SendMessage(chatId, defaultBotAnswer.illegalStateEx());
             }
             case NullPointerException npe -> {
-                log.error(POWER_MARKER, "NullPointerException -> Update: {}\nEx: ", update, npe);
+                log.error(POWER_MARKER, "NullPointerException -> Update: {}\nEx: ", Helper.write(update), npe);
                 return new SendMessage(chatId, defaultBotAnswer.nullPointerEx());
             }
 
@@ -154,20 +152,20 @@ public class TelegramService {
             }
 
             case JsonProcessingException jpe -> {
-                log.error(LOGIC_MARKER, "JsonProcessingException -> Update: {}\nEx: ", update, jpe);
+                log.error(LOGIC_MARKER, "JsonProcessingException -> Update: {}\nEx: ", Helper.write(update), jpe);
                 return new SendMessage(chatId, defaultBotAnswer.jsonProcessingEx());
             }
             case IOException ioe -> {
                 Thread.dumpStack();   // Maybe this is a OutOfMemoryError. Answer of model is too large
-                log.error(NETWORK_MARKER, "IOException was thrown. Dump of stack is above, maybe. Update: {}.\nEx: ", update, ioe);
+                log.error(NETWORK_MARKER, "IOException was thrown. Dump of stack is above, maybe. Update: {}.\nEx: ", Helper.write(update), ioe);
                 return new SendMessage(chatId, defaultBotAnswer.otherEx());
             }
             case GptTelegramBotException gtbe -> {
-                log.error(LOGIC_MARKER, gtbe.getMessage(), update, thrown);
+                log.error(LOGIC_MARKER, "GptTelegramBotException. Mess: {}\nUpdate: {}\nCause: ", gtbe.getMessage(), Helper.write(update), gtbe.getCause());
                 return new SendMessage(chatId, defaultBotAnswer.otherEx());
             }
             default -> {
-                log.error(LOGIC_MARKER, "Cannot processing update, unexpected exception. Update: {}. Ex: ", update, thrown);
+                log.error(LOGIC_MARKER, "Cannot processing update, unexpected exception. Update: {}. Ex: ", Helper.write(update), thrown);
                 return new SendMessage(chatId, defaultBotAnswer.otherEx());
             }
         }

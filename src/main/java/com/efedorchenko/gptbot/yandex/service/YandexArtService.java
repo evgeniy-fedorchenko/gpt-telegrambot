@@ -22,7 +22,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
-import org.slf4j.MDC;
+import org.slf4j.event.Level;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -112,6 +112,7 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
     }
 
     @Override
+    @Log(Level.TRACE)
     public ArtRequestBody prepareRequest(Message inputMess) {
 
         userModeCache.setMode(inputMess.getChatId(), Mode.YANDEX_ART_HOLD);
@@ -122,8 +123,8 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
                 .build();
     }
 
-    @Log
     @Override
+    @Log(Level.TRACE)
     public Optional<ArtAnswer> buildAndExecutePost(String url, Serializable requestBody, Class<ArtAnswer> responseType)
             throws IOException {
 
@@ -133,7 +134,6 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
                 .url(url)
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + IamTokenSupplier.IAM_TOKEN)
-                .header(YandexProperties.YA_RQUID_HEADER_NAME, MDC.get("RqUID"))
                 .header(YandexProperties.FOLDER_ID_HEADER_NAME, yandexProperties.getFolderId())
                 .post(RequestBody.create(serializedBody, OkHttpClientConfiguration.MT_APPLICATION_JSON))
                 .build();
@@ -145,8 +145,8 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
         }
     }
 
-    @Log(result = false)
     @Override
+    @Log(Level.TRACE)
     public PartialBotApiMethod<? extends Serializable> responseProcess(ArtAnswer firstResponse, Message sourceMess) {
 
         String chatId = String.valueOf(sourceMess.getChatId());
@@ -193,7 +193,6 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
             Request request = new Request.Builder()
                     .url(yandexProperties.getArtModelCompleteUrlPattern().formatted(operationId))
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + IamTokenSupplier.IAM_TOKEN)
-                    .header(YandexProperties.YA_RQUID_HEADER_NAME, MDC.get("RqUID"))
                     .header(YandexProperties.FOLDER_ID_HEADER_NAME, yandexProperties.getFolderId())
                     .get()
                     .build();
@@ -202,11 +201,11 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
                 return objectMapper.readValue(response.body().string(), ArtAnswer.class);
             }
 
-        } catch (JsonProcessingException ex) {
-            throw new GptTelegramBotException("Request was successful, but it wasn't possible to deserialize the response into an object of the \"%s\" class. Ex:{}".formatted(ArtAnswer.class), ex);
+        } catch (JsonProcessingException jpe) {
+            throw new GptTelegramBotException("Request was successful, but it wasn't possible to deserialize the response into an object of the \"%s\" class. Ex:{}".formatted(ArtAnswer.class), jpe);
 
-        } catch (IOException e) {
-            throw new GptTelegramBotException("Cannot execute call of the request or read response body");
+        } catch (IOException ioe) {
+            throw new GptTelegramBotException("Cannot execute call of the request or read response body", ioe);
         }
     }
 

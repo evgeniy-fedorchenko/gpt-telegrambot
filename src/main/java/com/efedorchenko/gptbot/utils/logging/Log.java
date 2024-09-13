@@ -1,18 +1,20 @@
 package com.efedorchenko.gptbot.utils.logging;
 
 import org.slf4j.event.Level;
+import org.springframework.core.annotation.AliasFor;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import java.lang.annotation.*;
 
 /**
  * Аннотация для логирования методов - их параметров и возвращаемого значения.
  */
+@Documented
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
 public @interface Log {
+
+    @AliasFor("level")
+    Level value() default Level.DEBUG;
 
     /**
      * Индексы параметров, которые необходимо исключить из логирования, начиная с нуля. Если пустой,
@@ -32,6 +34,7 @@ public @interface Log {
     /**
      * Уровень логирования для параметров и результата
      */
+    @AliasFor("value")
     Level level() default Level.DEBUG;
 
 }

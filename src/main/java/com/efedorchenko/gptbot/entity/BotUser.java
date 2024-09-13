@@ -14,9 +14,11 @@ import static org.hibernate.annotations.SourceType.VM;
 
 @Getter
 @Setter
-@NoArgsConstructor
-@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @ToString
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder(toBuilder = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @Entity
 @Table(name = "users")
 public class BotUser {
@@ -33,7 +35,6 @@ public class BotUser {
     @Column(columnDefinition = "TIMESTAMP(0) DEFAULT CURRENT_TIMESTAMP")
     private LocalDateTime lastModified;
 
-    @Column(unique = true)
     private String username;
 
     private String name;

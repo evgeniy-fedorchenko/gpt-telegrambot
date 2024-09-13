@@ -19,7 +19,7 @@ public class GptRequestBody implements Serializable {
      * Внутренний адрес модели Яндекса.
      * Параметр {@code a2gmcltgwefld9t36qwe} - идентификатор каталога Yandex Cloud
      *
-     * @example {@code "gpt://a2gmcltgwefld9t36qwe/yandexgpt}
+     * @example {@code gpt://a2gmcltgwefld9t36qwe/yandexgpt}
      */
     private final String modelUri;
 
@@ -59,7 +59,7 @@ public class GptRequestBody implements Serializable {
          * Устанавливает ограничение на выход модели в токенах, подробнее см. <a href="https://yandex.cloud/ru/docs/foundation-models/concepts/limits">Квоты и лимиты в Yandex Foundation Models</a>
          */
         @Builder.Default
-        private final int maxTokens = 2000;
+        private final int maxTokens = 1000;
 
     }
 }

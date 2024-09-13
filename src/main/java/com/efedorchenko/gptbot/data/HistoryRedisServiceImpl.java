@@ -26,9 +26,9 @@ public class HistoryRedisServiceImpl implements HistoryRedisService {
         this.messHistoryTtl = Duration.of(redisProperties.getHistoryTtlMillis(), ChronoUnit.MILLIS);
     }
 
-
+    @NotNull
     @Override
-    public @NotNull List<GptMessageUnit> getHistory(String userChatId) {
+    public List<GptMessageUnit> getHistory(String userChatId) {
         String key = redisProperties.getHistoryPrefix() + userChatId;
         List<GptMessageUnit> gptMessageUnits = historyRedisTemplate.opsForList().range(key, 0, -1);
         if (gptMessageUnits == null) {

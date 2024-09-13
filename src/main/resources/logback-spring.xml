@@ -42,6 +42,7 @@
     </appender>
 
     <logger name="com.efedorchenko.gptbot" level="TRACE" additivity="false">
+<!--    <logger name="com.efedorchenko.gptbot" level="DEBUG" additivity="false">-->
         <appender-ref ref="console"/>
         <appender-ref ref="app"/>
         <appender-ref ref="warn-error"/>

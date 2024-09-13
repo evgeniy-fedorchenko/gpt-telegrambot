@@ -26,7 +26,7 @@ public class ExecutorProperties {
      * где {@code POOL_SIZE} задается в системе как {@code Runtime.getRuntime().availableProcessors()}
      */
     @Positive
-    private int poolSizeMultiplierForMaxPoolSize;
+    private final int poolSizeMultiplierForMaxPoolSize;
 
     /**
      * Максимальное количество задач, которые могут находиться в очереди исполнителя.
@@ -36,7 +36,7 @@ public class ExecutorProperties {
      *     <li>Ноль означает нулевой размер очереди</li>
      * </lu>
      */
-    private int queueCapacity;
+    private final int queueCapacity;
 
     /**
      * Время в секундах, в течение которого неактивные потоки будут оставаться живыми,
@@ -46,7 +46,7 @@ public class ExecutorProperties {
      *     <li>Ноль означает, что неактивные потоки будут завершаться немедленно</li>
      * </lu>
      */
-    private int keepAliveSeconds;
+    private final int keepAliveSeconds;
 
     /**
      * Время в секундах, которое исполнитель будет ждать завершения всех задач
@@ -56,7 +56,7 @@ public class ExecutorProperties {
      *     <li>Ноль означает, что потоки будут немедленно прерваны</li>
      * </lu>
      */
-    private int awaitTerminationSeconds;
+    private final int awaitTerminationSeconds;
 
     /**
      * Префикс, который будет использоваться для имен потоков, создаваемых исполнителем.
@@ -64,6 +64,6 @@ public class ExecutorProperties {
      */
     @NotEmpty
     @Size(max = 15)
-    private String threadNamePrefix;
+    private final String threadNamePrefix;
 
 }

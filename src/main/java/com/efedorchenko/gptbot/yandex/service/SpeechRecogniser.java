@@ -44,7 +44,6 @@ public class SpeechRecogniser {
                 .url(yandexProperties.getRecognizeUrl())
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + IamTokenSupplier.IAM_TOKEN)
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_OCTET_STREAM_VALUE)
-                .header(YandexProperties.YA_RQUID_HEADER_NAME, MDC.get("RqUID"))
                 .header(YandexProperties.FOLDER_ID_HEADER_NAME, yandexProperties.getFolderId())
                 .post(RequestBody.create(bytes, okhttp3.MediaType.parse("multipart/form-data")))
                 .build();

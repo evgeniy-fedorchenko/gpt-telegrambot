@@ -20,18 +20,18 @@
                 <constraints primaryKey="true" nullable="false"/>
             </column>
 
-            <column name="created_at" type="timestamp" defaultValue="now()">
+            <column name="created_at" type="timestamp(0)" defaultValue="now()">
                 <constraints nullable="false"/>
             </column>
-            <column name="last_modified" type="timestamp" defaultValue="now()">
+            <column name="last_modified" type="timestamp(0)" defaultValue="now()">
                 <constraints nullable="false"/>
             </column>
 
             <column name="username" type="varchar(32)">
-                <constraints nullable="false" unique="true"/>
+                <constraints nullable="true"/>
             </column>
             <column name="name" type="varchar(140)">
-                <constraints nullable="false"/>
+                <constraints nullable="true"/>
             </column>
 
             <column name="yagpt_reqs_total" type="int">
@@ -57,7 +57,7 @@
         <sql>
 --             ALTER TABLE users ADD CONSTRAINT created_at_not_future    CHECK (current_timestamp >= created_at);
 --             ALTER TABLE users ADD CONSTRAINT last_modified_not_future CHECK (current_timestamp >= last_modified);
-            ALTER TABLE users ADD CONSTRAINT username_min_len         CHECK (length(username) >= 5);
+            ALTER TABLE users ADD CONSTRAINT username_min_len         CHECK (username is null or length(username) >= 5);
             ALTER TABLE users ADD CONSTRAINT username_pattern         CHECK (username ~ '[A-Aa-z0-9_]');
 
             ALTER TABLE users ADD CONSTRAINT yagpt_reqs_total  CHECK (yagpt_reqs_total >= 0);
