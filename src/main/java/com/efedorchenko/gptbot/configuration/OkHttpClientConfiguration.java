@@ -2,14 +2,14 @@ package com.efedorchenko.gptbot.configuration;
 
 import com.efedorchenko.gptbot.configuration.properties.OkhttpProperties;
 import lombok.AllArgsConstructor;
-import okhttp3.ConnectionPool;
-import okhttp3.Dispatcher;
-import okhttp3.MediaType;
-import okhttp3.OkHttpClient;
+import okhttp3.*;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.Ordered;
 
+import java.util.Comparator;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 @Configuration
@@ -20,7 +20,8 @@ public class OkHttpClientConfiguration {
     public static final MediaType MT_APPLICATION_JSON = MediaType.get("application/json; charset=utf-8");
 
     private final OkhttpProperties properties;
-    private final HttpLogInterceptor httpLogInterceptor;
+
+    private final List<Interceptor> okHttpInterceptors;
 
     @Bean
     public OkHttpClient okHttpClient() {
@@ -35,17 +36,19 @@ public class OkHttpClientConfiguration {
         dispatcher.setMaxRequests(properties.getMaxParallelRequests());
         dispatcher.setMaxRequestsPerHost(properties.getMaxParallelRequestsPerHost());
 
-        return new OkHttpClient.Builder()
+        OkHttpClient.Builder builder = new OkHttpClient.Builder()
                 .connectTimeout(properties.getConnectTimeout(), TimeUnit.MILLISECONDS)
                 .readTimeout(properties.getReadTimeout(), TimeUnit.MILLISECONDS)
                 .writeTimeout(properties.getWriteTimeout(), TimeUnit.MILLISECONDS)
 
                 .connectionPool(connectionPool)
                 .dispatcher(dispatcher)
-                .retryOnConnectionFailure(false)
+                .retryOnConnectionFailure(false);
 
-                .addInterceptor(httpLogInterceptor)
+        okHttpInterceptors.stream()
+                .sorted(Comparator.comparingInt(interceptor -> ((Ordered) interceptor).getOrder()))
+                .forEach(builder::addInterceptor);
 
-                .build();
+        return builder.build();
     }
 }

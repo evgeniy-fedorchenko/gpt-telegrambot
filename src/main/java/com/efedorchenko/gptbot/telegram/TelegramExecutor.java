@@ -1,8 +1,11 @@
 package com.efedorchenko.gptbot.telegram;
 
+import com.efedorchenko.gptbot.configuration.RedisConfiguration;
 import com.efedorchenko.gptbot.configuration.properties.TelegramProperties;
+import com.efedorchenko.gptbot.utils.logging.Log;
 import jakarta.annotation.Nullable;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.DefaultAbsSender;
 import org.telegram.telegrambots.bots.DefaultBotOptions;
@@ -19,16 +22,20 @@ import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Voice;
 import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMember;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
 
+import static com.efedorchenko.gptbot.utils.logging.LogUtils.FUTURE_CHECK;
 import static com.efedorchenko.gptbot.utils.logging.LogUtils.LOGIC_MARKER;
 
 @Slf4j
 @Component
 public class TelegramExecutor extends DefaultAbsSender {
+
+    private static final String RIGHT_DEFAULT_STATUS = "member";
 
     protected TelegramExecutor(TelegramProperties telegramProperties) {
         super(new DefaultBotOptions(), telegramProperties.getToken());
@@ -41,6 +48,7 @@ public class TelegramExecutor extends DefaultAbsSender {
      * @param method {@code @NotNull} Объект сообщения, готового к отправке
      * @return true, если сообщение было успешно отправлено, иначе false
      */
+    @Log
     public boolean send(PartialBotApiMethod<?> method) {
 
         boolean suc = true;
@@ -105,7 +113,8 @@ public class TelegramExecutor extends DefaultAbsSender {
      * @param messToSend сообщение для отправки
      * @return успешно отправленное сообщение
      */
-    public @Nullable Message sendAndReturn(SendMessage messToSend) {
+    @Nullable
+    public Message sendAndReturn(SendMessage messToSend) {
         try {
             return execute(messToSend);
         } catch (TelegramApiException ex) {
@@ -125,7 +134,31 @@ public class TelegramExecutor extends DefaultAbsSender {
         }
     }
 
-    public ChatMember checkSubscribes(long chatId, String s) throws TelegramApiException {
+    @Cacheable(
+            key = "#chatId",
+            cacheNames = RedisConfiguration.USER_IS_SUB_CACHE_NAME,
+            unless = "#result == null || (#result != null && !@telegramDistributor.rightStatuses.contains(#result))"
+    )
+    public String checkSubscribesPositive(long chatId, String channelLink) {
+
+        try {
+            return getChatMember(chatId, channelLink).getStatus();
+
+        } catch (TelegramApiRequestException tare) {
+            log.error(FUTURE_CHECK, "TelegramApiRequestException was thrown because bot is not admin of the channel '%s' to which the subscription is checked. Skipped, access to the bot is open. Cause: {}"
+                    .formatted(channelLink), tare.getMessage());
+        } catch (TelegramApiException tae) {
+            log.error(LOGIC_MARKER, "TelegramApiException was thrown. Ex: ", tae);
+        } catch (Exception ex) {
+            log.error(LOGIC_MARKER, "Unknown exception was thrown. Skipped, access to the bot is open. Ex: ", ex);
+        }
+
+//        If you can't check status then return "member"
+        return RIGHT_DEFAULT_STATUS;
+
+    }
+
+    private ChatMember getChatMember(long chatId, String s) throws TelegramApiException {
         return execute(new GetChatMember(s, chatId));
     }
 }
