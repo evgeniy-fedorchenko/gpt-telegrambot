@@ -19,7 +19,6 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 import java.io.Serializable;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
 import static com.efedorchenko.gptbot.telegram.TelegramDistributor.Command.*;
@@ -99,8 +98,8 @@ public class TelegramDistributor {
         String chatId = String.valueOf(inMess.getChatId());
 
 //        Проверка подписок на каналы
-        CompletableFuture<Boolean> isSubscribeFuture =
-                CompletableFuture.supplyAsync(() -> checkSubscribes(inMess.getChatId()));
+//        CompletableFuture<Boolean> isSubscribeFuture =
+//                CompletableFuture.supplyAsync(() -> checkSubscribes(inMess.getChatId()));
 
 //        На закрепление сообщения ничего не делаем
         if (inMess.getPinnedMessage() != null) {
@@ -124,8 +123,9 @@ public class TelegramDistributor {
         }
 
 //        Main processing
-        PartialBotApiMethod<? extends Serializable> processingResult = telegramService.processing(currentMode, update);
-        return isSubscribeFuture.join() ? processingResult : new SendMessage(chatId, defaultBotAnswer.subscribeForUse());
+//        PartialBotApiMethod<? extends Serializable> processingResult = telegramService.processing(currentMode, update);
+//        return isSubscribeFuture.join() ? processingResult : new SendMessage(chatId, defaultBotAnswer.subscribeForUse());
+        return telegramService.processing(currentMode, update);
     }
 
     private boolean checkSubscribes(long chatId) {
