@@ -6,7 +6,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.3.2</version>
+		<version>3.3.4</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 
@@ -25,8 +25,7 @@
 
 	<properties>
 		<java.version>21</java.version>
-		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<maven-compiler-plugin.target>21</maven-compiler-plugin.target>
+		<project-encoding>UTF-8</project-encoding>
 		<telegrambots.version>6.9.7.1</telegrambots.version>
 	</properties>
 
@@ -110,8 +109,8 @@
 				<artifactId>maven-compiler-plugin</artifactId>
 				<configuration>
 					<source>${java.version}</source>
-					<target>${maven-compiler-plugin.target}</target>
-					<encoding>${project.build.sourceEncoding}</encoding>
+					<target>${java.version}</target>
+					<encoding>${project-encoding}</encoding>
 				</configuration>
 			</plugin>
 		</plugins>
