@@ -111,6 +111,7 @@
 					<source>${java.version}</source>
 					<target>${java.version}</target>
 					<encoding>${project-encoding}</encoding>
+					<compilerArgs>--enable-preview</compilerArgs>
 				</configuration>
 			</plugin>
 		</plugins>

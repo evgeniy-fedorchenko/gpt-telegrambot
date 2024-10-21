@@ -14,6 +14,7 @@ import com.efedorchenko.gptbot.utils.logging.Log;
 import com.efedorchenko.gptbot.yandex.model.ArtAnswer;
 import com.efedorchenko.gptbot.yandex.model.ArtMessageUnit;
 import com.efedorchenko.gptbot.yandex.model.ArtRequestBody;
+import com.efedorchenko.gptbot.yandex.model.RequestContext;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -72,26 +73,18 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
     /**
      * Максимально допустимое количество символов во входящем промпте
      */
-     private static final int MAX_COUNT_SYMBOLS = 500;
+    private static final int MAX_COUNT_SYMBOLS = 500;
 
     /**
-     * Счетчик процентов. Показывает прогресс генерации изображения. На самом деле не имеет связи с процессом
-     * генерации, а просто постепенно увеличивается с все замедляющейся скоростью, никогда не достигая {@code 100%},
-     * расчет значения происходит в методе {@link YandexArtService#calculatePercentReady(double current)}<br>
-     * Значение в начале генерации - {@code 1%}<br>
-     * После каждой генерации сбрасывается на {@code 1%}
+     * Контекст проверки готовности изображения
+     * <p>
+     * Содержит информацию, нужную для работы процесса периодической
+     * (через {@link YandexArtService#processRetryInvoke(ArtAnswer, String, RequestContext)} проверки
+     * готовности изображения). Содержит информацию для юзера, который генерирует изображение. Это такая информация,
+     * как процент готовности и само отправляемое сообщение (его идентификатор) для редактирования этого сообщения
+     * по мере готовности
      */
-    private double percentReady = 1;
-
-    /**
-     * Сообщение, отправляемое юзеру, для уведомления его о процессе генерации. Отправляемое сообщение - объект
-     * {@link EditMessageText}, после отправки возвращающий этот объект. Поле нужно для хранения контекста этого
-     * сообщения, включающего {@link Message#getMessageId()}. Необходимо, чтобы держать юзера в курсе о процессе
-     * генерации, т.к. это занимает продолжительное время. Как правило, это сообщение содержит текст
-     * {@code Генерация завершена на X%}. В качестве счетчика процентов выступает поле
-     * {@link YandexArtService#percentReady}, который рассчитывается на основе прогресса генерации
-     */
-    private Message generationProcessMess;
+    private static final ScopedValue<RequestContext> REQUEST_CONTEXT = ScopedValue.newInstance();
 
     private final OkHttpClient httpClient;
     private final ObjectMapper objectMapper;
@@ -147,7 +140,8 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
 
     @Override
     @Log(Level.TRACE)
-    public PartialBotApiMethod<? extends Serializable> responseProcess(ArtAnswer firstResponse, Message sourceMess) {
+    public PartialBotApiMethod<? extends Serializable> responseProcess(ArtAnswer firstResponse, Message sourceMess)
+            throws Exception {
 
         String chatId = String.valueOf(sourceMess.getChatId());
         if (firstResponse.hasErrors()) {
@@ -155,26 +149,32 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
             return this.generateFiled(firstResponse, sourceMess);
         }
 
-        if (firstResponse.getId() != null) {
-            generationProcessMess =
-                    telegramExecutor.sendAndReturn(new SendMessage(chatId, defaultBotAnswer.yaartRequestAccepted()));
-        } else {
-            userModeCache.setMode(chatId, Mode.YANDEX_ART);
-            return new SendMessage(chatId, defaultBotAnswer.unknownError());
-        }
+        return ScopedValue.where(REQUEST_CONTEXT, new RequestContext()).call(() -> {
 
-        ArtAnswer secondResponse = retryTemplate.execute(context -> {
-                    if (context.getRetryCount() == retryTemplateConfiguration.getMaxAttempts()) {
-                        percentReady = 1;
+            RequestContext checkContext = REQUEST_CONTEXT.get();
+
+            if (firstResponse.getId() != null) {
+                SendMessage messToSend = new SendMessage(chatId, defaultBotAnswer.yaartRequestAccepted());
+                checkContext.setGenerationProcessMess(telegramExecutor.sendAndReturn(messToSend));
+            } else {
+                userModeCache.setMode(chatId, Mode.YANDEX_ART);
+                return new SendMessage(chatId, defaultBotAnswer.unknownError());
+            }
+
+            ArtAnswer secondResponse = retryTemplate.execute(retryContext -> {
+                        if (retryContext.getRetryCount() == retryTemplateConfiguration.getMaxAttempts()) {
+                            checkContext.setPercentReady(1);
+                        }
+                        return this.processRetryInvoke(this.retryInvoke(firstResponse.getId()), chatId, checkContext)
+                                .orElseThrow(() -> new RetryAttemptNotReadyException("The picture is not ready yet"));
                     }
-                    return this.processRetryInvoke(this.retryInvoke(firstResponse.getId()), chatId)
-                            .orElseThrow(() -> new RetryAttemptNotReadyException("The picture is not ready yet"));
-                }
-        );
+            );
 
-        return secondResponse.hasErrors()
-                ? generateFiled(secondResponse, sourceMess)
-                : generateComplete(secondResponse, chatId);
+            return secondResponse.hasErrors()
+                    ? generateFiled(secondResponse, sourceMess)
+                    : generateComplete(secondResponse, chatId);
+        });
+
     }
 
     @Override
@@ -209,13 +209,17 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
         }
     }
 
-    private Optional<ArtAnswer> processRetryInvoke(ArtAnswer maybeReady, String chatId) {
+    private Optional<ArtAnswer> processRetryInvoke(ArtAnswer maybeReady, String chatId, RequestContext context) {
+        Message generationProcessMess = context.getGenerationProcessMess();
+        double percentReady = context.getPercentReady();
+
         if (maybeReady != null && maybeReady.isDone()) {
 
             CompletableFuture.runAsync(() -> {
                 telegramExecutor.send(new DeleteMessage(chatId, generationProcessMess.getMessageId()));
                 userModeCache.setMode(chatId, Mode.YANDEX_ART);
-                percentReady = 1;
+                context.setPercentReady(1);
+                ;
             }, executorServiceOfVirtual);
 
             return Optional.of(maybeReady);
@@ -224,7 +228,7 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
             CompletableFuture.runAsync(() -> {
                 Double newPercentReady = calculatePercentReady(percentReady);
                 if (!newPercentReady.equals(percentReady)) {
-                    percentReady = newPercentReady;
+                    context.setPercentReady(newPercentReady);
                     EditMessageText mess = new EditMessageText("Генерация завершена на %.2f%%".formatted(percentReady));
                     mess.setChatId(chatId);
                     mess.setMessageId(generationProcessMess.getMessageId());
