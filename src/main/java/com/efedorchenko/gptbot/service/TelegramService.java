@@ -1,5 +1,6 @@
 package com.efedorchenko.gptbot.service;
 
+import com.efedorchenko.gptbot.configuration.ExecutorsConfiguration;
 import com.efedorchenko.gptbot.configuration.properties.DefaultBotAnswer;
 import com.efedorchenko.gptbot.data.UserModeRedisService;
 import com.efedorchenko.gptbot.exception.GptTelegramBotException;
@@ -16,6 +17,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.PartialBotApiMethod;
 import org.telegram.telegrambots.meta.api.methods.send.SendChatAction;
@@ -39,6 +41,7 @@ public class TelegramService {
 
     private static final long SCHEDULER_RUN_TASK_PERIOD_MILLIS = 5_000L;
 
+    private final ExecutorService executorOfVirtual;
     private final DefaultBotAnswer defaultBotAnswer;
     private final SpeechRecogniser speechRecogniser;
     private final TelegramExecutor telegramExecutor;
@@ -113,8 +116,8 @@ public class TelegramService {
 
     @SuppressWarnings("unchecked")
     private <REQ extends Serializable, RESP> AiModelService<REQ, RESP> getAiModelService(Mode mode) {
-        return (AiModelService<REQ, RESP>) applicationContext.getBean(
-                Objects.requireNonNullElse(mode.getServiceName(), YandexArtService.SERVICE_NAME), AiModelService.class);
+        String beanName = Objects.requireNonNullElse(mode.getServiceName(), YandexArtService.SERVICE_NAME);
+        return (AiModelService<REQ, RESP>) applicationContext.getBean(beanName, AiModelService.class);
     }
 
     private Future<?> scheduleChatAction(String chatId, Mode mode) {
@@ -124,7 +127,7 @@ public class TelegramService {
         sendChatAction.setAction(mode.getActionType());
 
         return singleThreadScheduler.scheduleAtFixedRate(() ->
-                        CompletableFuture.runAsync(() -> telegramExecutor.send(sendChatAction), executorServiceOfVirtual),
+                        CompletableFuture.runAsync(() -> telegramExecutor.send(sendChatAction), executorOfVirtual),
                 0,
                 SCHEDULER_RUN_TASK_PERIOD_MILLIS,
                 TimeUnit.MILLISECONDS
@@ -157,15 +160,18 @@ public class TelegramService {
             }
             case IOException ioe -> {
                 Thread.dumpStack();   // Maybe this is a OutOfMemoryError. Answer of model is too large
-                log.error(NETWORK_MARKER, "IOException was thrown. Dump of stack is above, maybe. Update: {}.\nEx: ", Helper.write(update), ioe);
+                log.error(NETWORK_MARKER, "IOException was thrown. Dump of stack is above, maybe. Update: {}.\nEx: ",
+                        Helper.write(update), ioe);
                 return new SendMessage(chatId, defaultBotAnswer.otherEx());
             }
             case GptTelegramBotException gtbe -> {
-                log.error(LOGIC_MARKER, "GptTelegramBotException. Mess: {}\nUpdate: {}\nCause: ", gtbe.getMessage(), Helper.write(update), gtbe.getCause());
+                log.error(LOGIC_MARKER, "GptTelegramBotException. Mess: {}\nUpdate: {}\nCause: ",
+                        gtbe.getMessage(), Helper.write(update), gtbe.getCause());
                 return new SendMessage(chatId, defaultBotAnswer.otherEx());
             }
             default -> {
-                log.error(LOGIC_MARKER, "Cannot processing update, unexpected exception. Update: {}. Ex: ", Helper.write(update), thrown);
+                log.error(LOGIC_MARKER, "Cannot processing update, unexpected exception. Update: {}. Ex: ",
+                        Helper.write(update), thrown);
                 return new SendMessage(chatId, defaultBotAnswer.otherEx());
             }
         }

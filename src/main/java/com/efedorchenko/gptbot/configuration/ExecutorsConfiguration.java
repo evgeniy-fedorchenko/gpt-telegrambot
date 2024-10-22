@@ -23,23 +23,26 @@ public class ExecutorsConfiguration {
 
     @Bean
     public ThreadPoolTaskExecutor threadPoolTaskExecutor(ExecutorProperties properties) {
+        int queueCapacity = properties.getQueueCapacity();
+        int keepAliveSeconds = properties.getKeepAliveSeconds();
+        int awaitTerminationSeconds = properties.getAwaitTerminationSeconds();
+
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
 
         executor.setCorePoolSize(ExecutorProperties.POOL_SIZE);
         executor.setMaxPoolSize(properties.getPoolSizeMultiplierForMaxPoolSize() * ExecutorProperties.POOL_SIZE);
-        executor.setQueueCapacity(properties.getQueueCapacity() < 0 ? Integer.MAX_VALUE : properties.getQueueCapacity());
-
+        executor.setQueueCapacity(queueCapacity < 0 ? Integer.MAX_VALUE : properties.getQueueCapacity());
         executor.setThreadNamePrefix(properties.getThreadNamePrefix());
-
-        executor.setKeepAliveSeconds(properties.getKeepAliveSeconds() < 0 ? Integer.MAX_VALUE : properties.getKeepAliveSeconds());
-        executor.setAwaitTerminationSeconds(properties.getAwaitTerminationSeconds() < 0 ? Integer.MAX_VALUE : properties.getAwaitTerminationSeconds());
+        executor.setKeepAliveSeconds(keepAliveSeconds < 0 ? Integer.MAX_VALUE : keepAliveSeconds);
+        executor.setAwaitTerminationSeconds(awaitTerminationSeconds < 0 ? Integer.MAX_VALUE : awaitTerminationSeconds);
+        executor.setTaskDecorator(mdcDecorator::apply);
 
         executor.initialize();
         return executor;
     }
 
     @Bean
-    public ExecutorService executorServiceOfVirtual() {
+    public ExecutorService executorOfVirtual() {
         return Executors.newThreadPerTaskExecutor(
                 srcRunnable -> Thread.ofVirtual().unstarted(mdcDecorator.apply(srcRunnable))
         );

@@ -14,17 +14,17 @@ import java.util.concurrent.ExecutorService;
 @Component
 public class TelegramBot extends TelegramLongPollingBot {
 
+    private final ExecutorService executorOfVirtual;
     private final TelegramProperties telegramProperties;
     private final TelegramUpdateHandler telegramUpdateHandler;
-    private final ExecutorService executorServiceOfVirtual;
 
-    public TelegramBot(TelegramProperties telegramProperties,
-                       TelegramUpdateHandler telegramUpdateHandler,
-                       ExecutorService executorServiceOfVirtual) {
+    public TelegramBot(ExecutorService executorOfVirtual,
+                       TelegramProperties telegramProperties,
+                       TelegramUpdateHandler telegramUpdateHandler) {
         super(telegramProperties.getToken());
+        this.executorOfVirtual = executorOfVirtual;
         this.telegramProperties = telegramProperties;
         this.telegramUpdateHandler = telegramUpdateHandler;
-        this.executorServiceOfVirtual = executorServiceOfVirtual;
     }
 
     @Override
@@ -36,7 +36,7 @@ public class TelegramBot extends TelegramLongPollingBot {
      * Точка входа в приложение со стороны Телеграм-бота.
      * <p>
      * Метод первично валидирует принятый объект, после чего направляет на маршрутизацию и обработку. После обработки,
-     * если результат не {@code null} - ответ направляется  в {@link TelegramExecutor#send(PartialBotApiMethod)} для
+     * если результат не {@code null} - ответ направляется в {@link TelegramExecutor#send(PartialBotApiMethod)} для
      * отправки контента юзеру. Если результат, возвращенный обработчиком {@link TelegramDistributor#distribute(Update)}
      * равен {@code null} - то он будет проигнорирован.
      * Так же метод отдельно логирует основные стадии работы бота - ПРИЕМ апдейта, ОБРАБОТКА и ОТПРАВКА
@@ -45,7 +45,7 @@ public class TelegramBot extends TelegramLongPollingBot {
      */
     @Override
     public void onUpdateReceived(Update update) {
-        CompletableFuture.runAsync(() -> telegramUpdateHandler.handleUpdate(update), executorServiceOfVirtual);
+        CompletableFuture.runAsync(() -> telegramUpdateHandler.handleUpdate(update), executorOfVirtual);
     }
 
 }

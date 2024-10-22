@@ -73,7 +73,7 @@ public class LogUtils {
      * @param targetlogger       целевой логгер, с помощью которого будет произведено логирование
      * @param log                настройки, в соответствии с которыми произойдет логирование
      */
-    @Async("executorServiceOfVirtual")
+    @Async("executorOfVirtual")
     public void doLogMethodAsyncForSomeone(@Nullable CompletableFuture<List<Object>> paramsForLogFuture,
                                            Object result,
                                            Logger targetlogger,

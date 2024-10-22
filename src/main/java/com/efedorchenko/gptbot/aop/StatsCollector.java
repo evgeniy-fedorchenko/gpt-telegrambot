@@ -28,7 +28,7 @@ public class StatsCollector {
 
     private static final Pattern allowedSymbols = Pattern.compile("[^A-Za-zА-Яа-я0-9._-]");
 
-    private final ExecutorService executorServiceOfVirtual;
+    private final ExecutorService executorOfVirtual;
     private final BotUserRepository botUserRepository;
 
     @Pointcut("execution(* com.efedorchenko.gptbot.service.AiModelService.buildAndExecutePost(..))")
@@ -77,7 +77,7 @@ public class StatsCollector {
                             }
                             botUserRepository.save(botUser);
 
-                        }), executorServiceOfVirtual);
+                        }), executorOfVirtual);
 
         return result;
     }

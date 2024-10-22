@@ -25,8 +25,8 @@ import java.util.stream.IntStream;
 @RequiredArgsConstructor
 public class MethodLogAspect {
 
-    private final ExecutorService executorServiceOfVirtual;
     private final LogUtils logUtils;
+    private final ExecutorService executorOfVirtual;
 
     @Around("@annotation(log)")
     public Object logMethod(ProceedingJoinPoint joinPoint, Log log) throws Throwable {
@@ -49,7 +49,7 @@ public class MethodLogAspect {
                         .mapToObj(methodParams::get)
                         .toList();
 
-            }, executorServiceOfVirtual);
+            }, executorOfVirtual);
         }
 
         try {

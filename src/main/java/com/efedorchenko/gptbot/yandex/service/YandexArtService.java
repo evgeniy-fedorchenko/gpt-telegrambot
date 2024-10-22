@@ -97,10 +97,10 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
     private final ObjectMapper objectMapper;
     private final RetryTemplate retryTemplate;
     private final YandexProperties yandexProperties;
+    private final ExecutorService executorOfVirtual;
     private final TelegramExecutor telegramExecutor;
     private final DefaultBotAnswer defaultBotAnswer;
     private final UserModeRedisService userModeCache;
-    private final ExecutorService executorServiceOfVirtual;
     private final RetryTemplateConfiguration retryTemplateConfiguration;
 
     @Override
@@ -216,7 +216,7 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
                 telegramExecutor.send(new DeleteMessage(chatId, generationProcessMess.getMessageId()));
                 userModeCache.setMode(chatId, Mode.YANDEX_ART);
                 percentReady = 1;
-            }, executorServiceOfVirtual);
+            }, executorOfVirtual);
 
             return Optional.of(maybeReady);
 
@@ -231,7 +231,7 @@ public class YandexArtService implements AiModelService<ArtRequestBody, ArtAnswe
                     telegramExecutor.send(mess);
                 }
 
-            }, executorServiceOfVirtual);
+            }, executorOfVirtual);
 
             return Optional.empty();
         }

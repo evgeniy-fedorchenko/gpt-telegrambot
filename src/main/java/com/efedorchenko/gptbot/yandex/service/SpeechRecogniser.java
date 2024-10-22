@@ -35,8 +35,8 @@ public class SpeechRecogniser {
 
     private final OkHttpClient httpClient;
     private final ObjectMapper objectMapper;
+    private final ExecutorService executorOfVirtual;
     private final YandexProperties yandexProperties;
-    private final ExecutorService executorServiceOfVirtual;
 
     public Optional<SpeechKitAnswer> doRecognize(byte[] bytes) {
 
@@ -99,7 +99,7 @@ public class SpeechRecogniser {
                 log.error(LOGIC_MARKER, "Exception occurred when writing an unrecognized voice to a file: {}", e.getMessage());
             }
 
-        }, executorServiceOfVirtual);
+        }, executorOfVirtual);
     }
 
 }
