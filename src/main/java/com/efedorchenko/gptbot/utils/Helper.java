@@ -11,7 +11,7 @@ import java.util.Optional;
 @Component
 public class Helper {
 
-    private static final ObjectMapper objectMapper = new ObjectMapper()
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
             .setSerializationInclusion(JsonInclude.Include.NON_NULL);
 
     public static String write(@Nullable Object object) {
@@ -27,7 +27,7 @@ public class Helper {
         }
 
         try {
-            return objectMapper.writeValueAsString(object);
+            return OBJECT_MAPPER.writeValueAsString(object);
         } catch (JsonProcessingException ignore) {
             return object == null ? null : object.toString();
         }
