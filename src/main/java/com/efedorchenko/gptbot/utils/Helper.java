@@ -27,9 +27,10 @@ public class Helper {
         }
 
         try {
+//             Serialization of null always returns "null" (string representation)
             return OBJECT_MAPPER.writeValueAsString(object);
         } catch (JsonProcessingException ignore) {
-            return object == null ? null : object.toString();
+            return object.toString();
         }
     }
 }
