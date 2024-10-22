@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.function.Function;
 
 @EnableAsync
 @EnableScheduling
@@ -39,25 +40,29 @@ public class ExecutorsConfiguration {
 
     @Bean
     public ExecutorService executorServiceOfVirtual() {
-        return Executors.newThreadPerTaskExecutor(srcRunnable -> {   // Only for thread per task
-            Map<String, String> parentContext = MDC.getCopyOfContextMap();
-            Runnable decoratedRunnable = () -> {
-                if (parentContext != null) {
-                    MDC.setContextMap(parentContext);
-                }
-                try {
-                    srcRunnable.run();
-                } finally {
-                    MDC.clear();
-                }
-            };
-            return Thread.ofVirtual().unstarted(decoratedRunnable);
-        });
+        return Executors.newThreadPerTaskExecutor(
+                srcRunnable -> Thread.ofVirtual().unstarted(mdcDecorator.apply(srcRunnable))
+        );
     }
 
     @Bean
     public ScheduledExecutorService singleThreadScheduledExecutorService() {
-        return Executors.newScheduledThreadPool(1);
+        return Executors.newScheduledThreadPool(1,
+                srcRunnable -> Thread.ofPlatform().unstarted(mdcDecorator.apply(srcRunnable))
+        );
     }
 
+    private final Function<Runnable, Runnable> mdcDecorator = srcRunnable -> {
+        Map<String, String> parentContext = MDC.getCopyOfContextMap();
+        return () -> {
+            if (parentContext != null) {
+                MDC.setContextMap(parentContext);
+            }
+            try {
+                srcRunnable.run();
+            } finally {
+                MDC.clear();
+            }
+        };
+    };
 }
