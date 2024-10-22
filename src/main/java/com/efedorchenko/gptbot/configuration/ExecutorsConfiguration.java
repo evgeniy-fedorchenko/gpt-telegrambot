@@ -45,14 +45,13 @@ public class ExecutorsConfiguration {
         );
     }
 
-    @Bean
-    public ScheduledExecutorService singleThreadScheduledExecutorService() {
+    public static ScheduledExecutorService singleThreadScheduler() {
         return Executors.newScheduledThreadPool(1,
                 srcRunnable -> Thread.ofPlatform().unstarted(mdcDecorator.apply(srcRunnable))
         );
     }
 
-    private final Function<Runnable, Runnable> mdcDecorator = srcRunnable -> {
+    private static final Function<Runnable, Runnable> mdcDecorator = srcRunnable -> {
         Map<String, String> parentContext = MDC.getCopyOfContextMap();
         return () -> {
             if (parentContext != null) {

@@ -37,15 +37,6 @@ import static com.efedorchenko.gptbot.utils.logging.LogUtils.*;
 @RequiredArgsConstructor
 public class TelegramService {
 
-    /**
-     * Объект для планирования отправки объектов {@link SendChatAction} - т.е. для уведомления пользователя о том,
-     * что в данный момент бот задан работой. Использует один поток, каждая таска должна быть запущена асинхронно
-     * в виртуальном потоке, чтобы этот шедулер не ждал ее выполнения, а приступал к следующей мгновенно
-     *
-     * @see TelegramService#scheduleChatAction(String chatId, Mode userMode)
-     */
-    private final ScheduledExecutorService singleThreadScheduler;
-
     private static final long SCHEDULER_RUN_TASK_PERIOD_MILLIS = 5_000L;
 
     private final DefaultBotAnswer defaultBotAnswer;
@@ -53,7 +44,16 @@ public class TelegramService {
     private final TelegramExecutor telegramExecutor;
     private final UserModeRedisService userModeCache;
     private final ApplicationContext applicationContext;
-    private final ExecutorService executorServiceOfVirtual;
+
+    /**
+     * Объект для планирования и отправки объектов {@link SendChatAction} - т.е. для уведомления пользователя о том,
+     * что в данный момент бот задан работой. Использует один поток, каждая таска должна быть запущена асинхронно
+     * в виртуальном потоке, чтобы этот шедулер не ждал ее выполнения, а приступал к следующей мгновенно
+     *
+     * @see TelegramService#scheduleChatAction(String chatId, Mode userMode)
+     */
+    @Lazy
+    private final ScheduledExecutorService singleThreadScheduler = ExecutorsConfiguration.singleThreadScheduler();
 
     @Log
     public <REQ extends Serializable, RESP> PartialBotApiMethod<? extends Serializable> processing(
