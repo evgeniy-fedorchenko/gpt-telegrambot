@@ -3,12 +3,10 @@ package com.efedorchenko.gptbot.utils;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.stereotype.Component;
 import reactor.util.annotation.Nullable;
 
 import java.util.Optional;
 
-@Component
 public class Helper {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
@@ -27,9 +25,10 @@ public class Helper {
         }
 
         try {
+//             Serialization of null always returns "null" (string representation)
             return OBJECT_MAPPER.writeValueAsString(object);
         } catch (JsonProcessingException ignore) {
-            return object == null ? null : object.toString();
+            return object.toString();
         }
     }
 }
