@@ -62,8 +62,9 @@ public interface AiModelService<REQ extends Serializable, RESP> {
      * @param response   десериализованный, необработанный ответ от, который предоставила нейросеть
      * @param sourceMess исходный объект сообщения, послуживший источником данных для нейросети
      * @return объект, готовый к немедленной отправке посредством {@link TelegramExecutor#send(PartialBotApiMethod)}
+     * @throws Exception если процесс обработки ответа завершился с ошибкой
      */
-    PartialBotApiMethod<? extends Serializable> responseProcess(RESP response, Message sourceMess);
+    PartialBotApiMethod<? extends Serializable> responseProcess(RESP response, Message sourceMess) throws Exception;
 
     /**
      * Метод для предоставления полного и корректного интернет http-адреса. По этому адресу будет отправлен
