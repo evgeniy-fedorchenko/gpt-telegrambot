@@ -1,21 +1,34 @@
 package com.efedorchenko.gptbot.utils;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.stereotype.Component;
-import org.telegram.telegrambots.meta.api.objects.Update;
+import reactor.util.annotation.Nullable;
 
-@Component
+import java.util.Optional;
+
 public class Helper {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
+            .setSerializationInclusion(JsonInclude.Include.NON_NULL);
 
-    public static String write(Update update) {
+    public static String write(@Nullable Object object) {
+        if (object instanceof String string) {
+            return string;
+        }
+
+        if (object instanceof Optional<?> optional) {
+            if (optional.isEmpty()) {
+                return "Optional.empty";
+            }
+            object = optional.get();
+        }
+
         try {
-            return OBJECT_MAPPER.writeValueAsString(update);
+//             Serialization of null always returns "null" (string representation)
+            return OBJECT_MAPPER.writeValueAsString(object);
         } catch (JsonProcessingException ignore) {
-            return "<cannot serialize>. Use 'toString()': " + update.toString();
+            return object.toString();
         }
     }
-
 }

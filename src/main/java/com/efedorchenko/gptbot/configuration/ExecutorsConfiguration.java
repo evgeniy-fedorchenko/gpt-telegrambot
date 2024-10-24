@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.function.Function;
 
 @EnableAsync
 @EnableScheduling
@@ -22,42 +23,48 @@ public class ExecutorsConfiguration {
 
     @Bean
     public ThreadPoolTaskExecutor threadPoolTaskExecutor(ExecutorProperties properties) {
+        int queueCapacity = properties.getQueueCapacity();
+        int keepAliveSeconds = properties.getKeepAliveSeconds();
+        int awaitTerminationSeconds = properties.getAwaitTerminationSeconds();
+
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
 
         executor.setCorePoolSize(ExecutorProperties.POOL_SIZE);
         executor.setMaxPoolSize(properties.getPoolSizeMultiplierForMaxPoolSize() * ExecutorProperties.POOL_SIZE);
-        executor.setQueueCapacity(properties.getQueueCapacity() < 0 ? Integer.MAX_VALUE : properties.getQueueCapacity());
-
+        executor.setQueueCapacity(queueCapacity < 0 ? Integer.MAX_VALUE : properties.getQueueCapacity());
         executor.setThreadNamePrefix(properties.getThreadNamePrefix());
-
-        executor.setKeepAliveSeconds(properties.getKeepAliveSeconds() < 0 ? Integer.MAX_VALUE : properties.getKeepAliveSeconds());
-        executor.setAwaitTerminationSeconds(properties.getAwaitTerminationSeconds() < 0 ? Integer.MAX_VALUE : properties.getAwaitTerminationSeconds());
+        executor.setKeepAliveSeconds(keepAliveSeconds < 0 ? Integer.MAX_VALUE : keepAliveSeconds);
+        executor.setAwaitTerminationSeconds(awaitTerminationSeconds < 0 ? Integer.MAX_VALUE : awaitTerminationSeconds);
+        executor.setTaskDecorator(mdcDecorator::apply);
 
         executor.initialize();
         return executor;
     }
 
     @Bean
-    public ExecutorService executorServiceOfVirtual() {
-        return Executors.newThreadPerTaskExecutor(srcRunnable -> {   // Only for thread per task
-            Map<String, String> parentContext = MDC.getCopyOfContextMap();
-            Runnable decoratedRunnable = () -> {
-                if (parentContext != null) {
-                    MDC.setContextMap(parentContext);
-                }
-                try {
-                    srcRunnable.run();
-                } finally {
-                    MDC.clear();
-                }
-            };
-            return Thread.ofVirtual().unstarted(decoratedRunnable);
-        });
+    public ExecutorService executorOfVirtual() {
+        return Executors.newThreadPerTaskExecutor(
+                srcRunnable -> Thread.ofVirtual().unstarted(mdcDecorator.apply(srcRunnable))
+        );
     }
 
-    @Bean
-    public ScheduledExecutorService singleThreadScheduledExecutorService() {
-        return Executors.newScheduledThreadPool(1);
+    public static ScheduledExecutorService singleThreadScheduler() {
+        return Executors.newScheduledThreadPool(1,
+                srcRunnable -> Thread.ofPlatform().unstarted(mdcDecorator.apply(srcRunnable))
+        );
     }
 
+    private static final Function<Runnable, Runnable> mdcDecorator = srcRunnable -> {
+        Map<String, String> parentContext = MDC.getCopyOfContextMap();
+        return () -> {
+            if (parentContext != null) {
+                MDC.setContextMap(parentContext);
+            }
+            try {
+                srcRunnable.run();
+            } finally {
+                MDC.clear();
+            }
+        };
+    };
 }
