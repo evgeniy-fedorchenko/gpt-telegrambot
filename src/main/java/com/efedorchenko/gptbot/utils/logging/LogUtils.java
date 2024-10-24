@@ -1,6 +1,7 @@
 package com.efedorchenko.gptbot.utils.logging;
 
 import com.efedorchenko.gptbot.aop.MethodLogAspect;
+import com.efedorchenko.gptbot.utils.Helper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -73,7 +74,7 @@ public class LogUtils {
      * @param targetlogger       целевой логгер, с помощью которого будет произведено логирование
      * @param log                настройки, в соответствии с которыми произойдет логирование
      */
-    @Async("executorServiceOfVirtual")
+    @Async("executorOfVirtual")
     public void doLogMethodAsyncForSomeone(@Nullable CompletableFuture<List<Object>> paramsForLogFuture,
                                            Object result,
                                            Logger targetlogger,
@@ -112,10 +113,13 @@ public class LogUtils {
     }
 
     public String format(Object object) {
+        String string = Helper.write(object);
+        if (string == null) {
+            return null;
+        }
 
         try {
-            String string = (object instanceof String ? (String) object : objectMapper.writeValueAsString(object))
-                    .replaceAll("\\n", "")
+            string = string.replaceAll("\\n", "")
                     .replaceAll(BASE64_REGEX, "base64 encoding");
 
             String result = truncate(objectMapper.readTree(string), 2).toString();

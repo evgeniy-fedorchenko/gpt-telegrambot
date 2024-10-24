@@ -45,9 +45,9 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
     private final OkHttpClient httpClient;
     private final ObjectMapper objectMapper;
     private final HistoryRedisService historyCache;
+    private final ExecutorService executorOfVirtual;
     private final DefaultBotAnswer defaultBotAnswer;
     private final YandexProperties yandexProperties;
-    private final ExecutorService executorServiceOfVirtual;
 
     @Override
     public String validate(Message inputMess) {
@@ -65,10 +65,7 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
         List<GptMessageUnit> history = historyCache.getHistory(inputMess.getChatId());
         history.add(question);
 
-        CompletableFuture.runAsync(
-                () -> historyCache.addMessage(inputMess.getChatId(), question),
-                executorServiceOfVirtual
-        );
+        CompletableFuture.runAsync(() -> historyCache.addMessage(inputMess.getChatId(), question), executorOfVirtual);
         return GptRequestBody.builder()
                 .modelUri(yandexProperties.getChatbotUri().formatted())
                 .messages(history)
@@ -117,7 +114,7 @@ public class YandexGptService implements AiModelService<GptRequestBody, GptAnswe
             return new SendMessage(chatId, defaultBotAnswer.unknownError());
         }
         GptMessageUnit answer = response.getResult().getAlternatives().getLast().getMessage();
-        CompletableFuture.runAsync(() -> historyCache.addMessage(chatId, answer), executorServiceOfVirtual);
+        CompletableFuture.runAsync(() -> historyCache.addMessage(chatId, answer), executorOfVirtual);
         return new SendMessage(chatId, answer.getText());
     }
 
